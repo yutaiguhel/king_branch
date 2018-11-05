@@ -64,6 +64,8 @@ m.init_U() #効用の初期化
 #==============================デバッグ用========================================
 a_list=[]
 b_list=[]
+t_list=[]
+V_list=[]
 #===========================パーティクルと量子操作群の生成===========================
 #パーティクルの作成
 m.x=m.Particlemaker(m.x,m.n,m.ParamH,m.RangeH)
@@ -102,6 +104,18 @@ for i in range(m.ex):
     #m.UtilIG() #効用を平均情報量とする場合
     m.UtilIG_bayes_risk() #効用をベイズリスクとする場合
     
+    t_list.append(m.C_best[3])
+    plt.plot(m.i_list,t_list)
+    plt.title("MWwidth",fontsize=24)
+    plt.show()
+    
+    V_list.append(m.C_best[0])
+    plt.plot(m.i_list,V_list)
+    plt.title("V1",fontsize=24)
+    plt.show()
+    
+    
+    
     #効用最大の実験設計で確率のルックアップテーブルを作成
     flag=m.flag1|m.flag2
     if flag==True or i==0:
@@ -134,6 +148,7 @@ for i in range(m.ex):
     plt.title("b1",fontsize=24)
     plt.show()
     
+        
     #1推定にかかった時間
     tim1=time.time()
     print (tim1-tim0,"sec","\n")
