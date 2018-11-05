@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 クロスワイヤのドライブハミルトニアンを生成できます.
 効用はベイズリスク、エントロピーが選べます。
 確率のルックアップテーブルは十字に計算するか、全て計算するか選ぶことが出来ます。
+わかんなくなったら1つ前のVersionに戻る。
 """
 class Bayes_Function(Q_H):
     """
@@ -28,7 +29,7 @@ class Bayes_Function(Q_H):
         self.ex=100 #試行回数
         self.i=0 #現在の試行回数
         self.n={"a1":5,"b1":5,"a2":5,"b2":5,"w_theta":5,"D0":5,"AN":5,"QN":5,"Bz":5} #推定基底毎のパーティクルの数 a1,b1,a2,b2,w_theta,D0,An,Qn,Bz
-        self.g={"V1":5,"V2":5,"phi":30,"MWwidth":5,"MWfreq":5} #量子操作において変更するパラメータの分割数 V1,V2,phi,MWwidth,MWfreq
+        self.g={"V1":5,"V2":5,"phi":30,"MWwidth":5,"MWfreq":5,"t_wait":5} #量子操作において変更するパラメータの分割数 V1,V2,phi,MWwidth,MWfreq
         self.d=1000 #一度の推定に使用する実験データの数
         self.a=0.75 #パーティクルの再配分における移動強度
         self.resample_threshold=0.5 #パーティクルの再配分を行う判断をする閾値
@@ -39,15 +40,15 @@ class Bayes_Function(Q_H):
         self.flag1=False #パーティクルの数が変化したらTrue
         self.flag2=False #実験設計の数が変化したらTrue
         self.Q=0 #ベイズリスクの重み行列
-        self.U=0 #効用
+        self.U_rabi=0 #ラビ振動の効用
         self.B_R=0 #ベイズリスク
-        self.Utility="binomial"
-        self.ptable_mode="all" #all or cross
         self.num=0 #ms=0にいた回数
         self.p_exp=0 #真値におけるms=0にいた確率
+        self.exp_flag="rabi"
         #結果格納配列
         self.i_list=[]
-        self.ptable_C=[]
+        self.ptable_C_rabi=[]
+        self.ptable_C_ramsey=[]
         self.ptable_x=[]
         self.ptable=[]
         self.risk=[]
@@ -61,8 +62,9 @@ class Bayes_Function(Q_H):
         self.phi=180*pi/180 #ワイヤ間の位相差[rad]
         self.t=0.05 #MWパルス長[us]
         self.MWf=2870 #MW周波数の中心[MHz]
-        self.ParamC={"V1":0,"V2":0,"phi":1,"MWwidth":1,"MWfreq":1} #V1,V2,phi,MWwidth,MWfreq #変更する量子操作のパラメータ
-        self.RangeC={"V1":1,"V2":1,"phi":360,"MWwidth":0.05,"MWfreq":10} #変更する範囲
+        self.t_wait=1 #ラムゼー干渉の待ち時間[us]
+        self.ParamC={"V1":0,"V2":0,"phi":1,"MWwidth":1,"MWfreq":1,"t_wait":1} #V1,V2,phi,MWwidth,MWfreq #変更する量子操作のパラメータ
+        self.RangeC={"V1":1,"V2":1,"phi":360,"MWwidth":0.05,"MWfreq":10,"t_wait":0.5} #変更する範囲
         self.C_best=0
         self.C_best_i=0
         #GRAPE
@@ -96,7 +98,7 @@ class Bayes_Function(Q_H):
             n_p=len(self.w)
         return n_p
     
-    def n_exp(self):
+    def n_exp_rabi(self):
         """
         実験設計の数を返す
         """
@@ -106,7 +108,7 @@ class Bayes_Function(Q_H):
                 if self.ParamC[c]==1:
                     n_C=n_C*self.g[c]
         else:
-            n_C=len(self.U)
+            n_C=len(self.U_rabi)
         return n_C
         
     def Mean(self,w,x): #重み付き平均を計算する関数
@@ -136,18 +138,18 @@ class Bayes_Function(Q_H):
         n_p=self.n_particles()
         self.w=np.ones([n_p,1])
         
-    def init_U(self):
+    def init_U_rabi(self):
         """
         効用を一様分布に初期化
         """
-        n_C=self.n_exp()
-        self.U=np.ones([n_C,1])
+        n_C=self.n_exp_rabi()
+        self.U_rabi=np.ones([n_C,1])
     
     def init_R(self):
         """
         ベイズリスクを一様分布に初期化
         """
-        n_C=self.n_exp()
+        n_C=self.n_exp_rabi()
         self.B_R=np.ones([n_C,1])
     
     def init_x(self):
@@ -236,8 +238,8 @@ class Bayes_Function(Q_H):
         ws:昇順に並び替えた重み
         wsの(m+1)番目の要素よりも大きい重みのパーティクルは残す
         """
-        n=len(self.U)
-        Us=sorted(self.U)
+        n=len(self.U_rabi)
+        Us=sorted(self.U_rabi)
         m=floor(n*(1.0-self.approx_ratio))
         if m<1:
             m=0
@@ -246,15 +248,15 @@ class Bayes_Function(Q_H):
         while j!=m:
             i=0
             for i in range(n):
-                if self.U[i]==Us[j] and n!=0:
+                if self.U_rabi[i]==Us[j] and n!=0:
                     delist.append(i)
                     j=j+1
                 if j==m:
                     break
-        self.U=np.delete(self.U,delist,0)
-        self.U=self.U/sum(self.U)
-        self.U=np.delete(self.U,delist,0)
-        if n != len(self.U):
+        self.U_rabi=np.delete(self.U_rabi,delist,0)
+        self.U_rabi=self.U_rabi/sum(self.U_rabi)
+        self.U_rabi=np.delete(self.U_rabi,delist,0)
+        if n != len(self.U_rabi):
             self.flag2=True
             print("reapprox_exp")
         else:
@@ -299,31 +301,39 @@ class Bayes_Function(Q_H):
                     mes=0
         return mes
     
-    def Prob_Lookup(self,x,C): #確率のルックアップテーブルを作る。もっと軽量化したい
+    def Prob_Lookup(self,x,C,exp): #確率のルックアップテーブルを作る。もっと軽量化したい
         """
         確率のルックアップテーブルを作成する
-        allの場合,ルックアップテーブルの形は(パーティクル数 * 実験設計数)
         """
         self.mode=1 #Expsimでms=0の確率を算出
-        if self.ptable_mode=="cross":
-            if len(x) == self.n_particles():#各パーティクルについてある実験Cで実験を行う
-                self.ptable_x=np.zeros([self.n_particles(),1])
-                for i in range(self.n_particles()):
-                    self.ptable_x[i]=self.Expsim(self.x[i],C)
-            
-            else: #あるパーティクルについて全実験設計で実験を行う
-                if self.i==0:
-                    self.C_best_i=int(self.n_exp()*np.random.random())
-                    self.C_best=self.C[self.C_best_i]
-                self.ptable_C=np.zeros([self.n_exp(),1])
-                for i in range(self.n_exp()):
-                    self.ptable_C[i]=self.Expsim(x,self.C[i])
+        if len(x) == self.n_particles():#各パーティクルについてある実験Cで実験を行う
+            self.ptable_x=np.zeros([self.n_particles(),1])
+            for i in range(self.n_particles()):
+                self.ptable_x[i]=self.Expsim(self.x[i],C)
         
-        elif (self.ptable_mode=="all"):
-            self.ptable=np.zeros([self.n_particles(),self.n_exp()])
-            for i in range(self.n_exp()):
-                for j in range(self.n_particles()):
-                    self.ptable[j,i]=self.Expsim(self.x[j],self.C[i])
+        else: #あるパーティクルについて全実験設計で実験を行う
+            if self.i==0:
+                self.C_best_i=int(self.n_exp_rabi()*np.random.random())
+                self.C_best=self.C[self.C_best_i]
+            self.ptable_C_rabi=np.zeros([self.n_exp_rabi(),1])
+            for i in range(self.n_exp_rabi()):
+                self.ptable_C_rabi[i]=self.Expsim(x,self.C[i])
+                
+    def Prob_Lookup_C(self):
+        m=np.argmax(self.w)
+        #あるパーティクルについて各ラビで操作した時の確率のルックアップテーブル作成
+        if self.i==0:
+                self.C_best_i=int(self.n_exp_rabi()*np.random.random())
+                self.C_best=self.C[self.C_best_i]
+        self.ptable_C_rabi=np.zeros([self.n_exp_rabi(),1])
+        for i in range(self.n_exp_rabi()):
+            self.ptable_C_rabi[i]=self.Expsim(self.x[m],self.C[i])
+            
+        #あるパーティクルについて各ラムゼーで操作した時の確率のルックアップテーブルを作成
+        self.ptable_C_ramsey=np.zeros([self.n_exp_ramsey(),1])
+        for i in range(self.n_exp_ramsey()):
+            self.ptable_C_ramsey[i]=self.Expsim(self.x[m],self.C_ramsey[i])
+        
                     
     def Entropy(self,p):
         """
@@ -340,11 +350,11 @@ class Bayes_Function(Q_H):
         各パーティクルについてエントロピーを計算する。
         エントロピーをかけて効用の分布を更新する
         """
-        ent_table = self.Entropy(self.ptable_C)#-self.ptable_C*np.log2(self.ptable_C) #エントロピーテーブル（各要素は各々の実験でのエントロピー)
+        ent_table = self.Entropy(self.ptable_C_rabi)#-self.ptable_C*np.log2(self.ptable_C) #エントロピーテーブル（各要素は各々の実験でのエントロピー)
         ent_array = (np.reshape(ent_table,[len(ent_table),1])) #2D配列に変換
-        self.U=ent_array*self.U
-        self.U=self.U/np.sum(self.U)
-        self.C_best_i=np.argmax(self.U)
+        self.U_rabi=ent_array*self.U_rabi
+        self.U_rabi=self.U_rabi/np.sum(self.U_rabi)
+        self.C_best_i=np.argmax(self.U_rabi)
         self.C_best=self.C[self.C_best_i]
         
     def UtilIG_bayes_risk(self):
@@ -355,15 +365,15 @@ class Bayes_Function(Q_H):
         if self.i != 0:
             m=np.argmax(self.w)
             L_w=np.ones(self.n_particles())
-            dU=np.zeros([self.n_exp(),1])
-            for i in range(self.n_exp()):
-                L_w[m]=binom.pmf(self.num,n=self.d,p=self.ptable_C[i])#各パーティクルでの実験でms=0にいた確率
+            dU=np.zeros([self.n_exp_rabi(),1])
+            for i in range(self.n_exp_rabi()):
+                L_w[m]=binom.pmf(self.num,n=self.d,p=self.ptable_C_rabi[i])#各パーティクルでの実験でms=0にいた確率
                 w_new=self.w*L_w.reshape([len(L_w),1]) #重みの更新
                 x_infer=self.Mean(w_new,self.x)
                 dU[i]=np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))) #実験C[i]でのベイズリスク
-            self.U=dU*self.U
-            self.U=self.U/np.sum(self.U)
-        self.C_best_i=np.argmin(self.U)
+            self.U_rabi=dU*self.U_rabi
+            self.U_rabi=self.U_rabi/np.sum(self.U_rabi)
+        self.C_best_i=np.argmin(self.U_rabi)
         self.C_best=self.C[self.C_best_i]
 
     def Update(self): #ベイズ推定を行う関数 引数(self,Ci)
@@ -404,8 +414,8 @@ class Bayes_Function(Q_H):
         """
         現在の効用を描画する関数
         """
-        Ui=np.linspace(1,self.n_exp(),self.n_exp())
-        plt.plot(Ui,self.U)
+        Ui=np.linspace(1,self.n_exp_rabi(),self.n_exp_rabi())
+        plt.plot(Ui,self.U_rabi)
         plt.xlabel("experiment")
         plt.ylabel("Utility (a.u.)")
         plt.title("Utility", fontsize=24)
