@@ -12,6 +12,7 @@ Created on Thu Sep 27 14:01:39 2018
 ###############################################################################
 使用上の注意
 ・電圧は0Vにしない。Range,中心値に注意
+・分からなくなったら1つ前のversionに戻る
 """
 #================================ライブラリの読み込み===============================
 import sys
@@ -19,7 +20,7 @@ import sys
 sys.path.append("C:/koga/実験系/king_branch/機械学習/サブpy")
 from Q_H05_1 import*
 #from Q_module_grape_qutip_koga02 import*
-from Bayes_function12 import*
+from Bayes_function13 import*
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 #==============================プログラム起動時刻の記録=============================
@@ -27,8 +28,6 @@ start=time.asctime()
 print("start:",start)
 #===============================インスタンス生成===================================
 m=Bayes_Function()
-#================================ベイズ推定の設定=================================
-m.ptable_mode="cross" #cross or all
 #===============================パラメータの変更===================================
 m.ex=300 #試行回数
 m.d=1000 #推定に使う実験データの数
