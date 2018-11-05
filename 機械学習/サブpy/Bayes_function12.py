@@ -372,12 +372,12 @@ class Bayes_Function(Q_H):
         """
         self.mode=1
         self.p_exp=self.Expsim(self.x0,self.C_best)#真値におけるms0の確立
-        self.num=binomial(self.d, p_exp)#実験をd回行いｍs=0であった回数
+        self.num=binomial(self.d, self.p_exp)#実験をd回行いｍs=0であった回数
         if self.ptable_mode=="cross":
-            temp=binom.pmf(num,n=self.d,p=self.ptable_x)#各パーティクルでの実験でms=0にいた確率
+            temp=binom.pmf(self.num,n=self.d,p=self.ptable_x)#各パーティクルでの実験でms=0にいた確率
             self.w=self.w*temp.reshape([len(temp),1]) #重みの更新
         elif self.ptable_mode=="all":
-            temp=binom.pmf(num,n=self.d,p=self.ptable)[:,self.C_best_i]#各パーティクルでの実験でms=0にいた確率
+            temp=binom.pmf(self.num,n=self.d,p=self.ptable)[:,self.C_best_i]#各パーティクルでの実験でms=0にいた確率
             self.w=self.w*temp #重みの更新
         self.w=self.w/np.sum(self.w) #重みの規格化
     
