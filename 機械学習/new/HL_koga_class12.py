@@ -15,10 +15,10 @@ Created on Thu Sep 27 14:01:39 2018
 """
 #================================ライブラリの読み込み===============================
 import sys
-sys.path.append("C:/Users/yuta/.ipython/profile_default/GRAPE/new")
+#sys.path.append("C:/Users/yuta/.ipython/profile_default/GRAPE/new")
 sys.path.append("C:/koga/実験系/king_branch/機械学習/サブpy")
 from Q_H05_1 import*
-from Q_module_grape_qutip_koga02 import*
+#from Q_module_grape_qutip_koga02 import*
 from Bayes_function12 import*
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
