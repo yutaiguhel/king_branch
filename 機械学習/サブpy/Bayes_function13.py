@@ -254,7 +254,6 @@ class Bayes_Function(Q_H):
             j=0
             delist=[]
             while j!=m:
-                i=0
                 for l in range(n):
                     if self.U[i][l]==Us[j] and n!=0:
                         delist.append(l)
@@ -344,7 +343,7 @@ class Bayes_Function(Q_H):
             self.ptable_x[i]=self.Expsim(self.x[i],self.C_best)
     
     def Prob_Lookup_C(self):
-        self.exp_flag=="rabi"
+        self.exp_flag="rabi"
         self.ptable_C=[np.zeros([self.n_exp("rabi"),1]),np.zeros([self.n_exp("ramsey"),1])]
         for i in range(2):
             if i==1:
@@ -393,30 +392,33 @@ class Bayes_Function(Q_H):
                 if j==1:
                     exp="ramsey"
                 for i in range(self.n_exp(exp)):
-                    L_w[m]=binom.pmf(self.num,n=self.d,p=self.ptable_C[i])#各パーティクルでの実験でms=0にいた確率
+                    L_w[m]=binom.pmf(self.num,n=self.d,p=self.ptable_C[j][i])#各パーティクルでの実験でms=0にいた確率
                     w_new=self.w*L_w.reshape([len(L_w),1]) #重みの更新
                     x_infer=self.Mean(w_new,self.x)
-                    dU[0][i]=np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))) #実験C[i]でのベイズリスク
+                    dU[0,i]=np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))) #実験C[i]でのベイズリスク
+                print(dU[j].shape)
+                print(self.U[j].shape)
                 self.U[j]=dU[j]*self.U[j]
             U_min=[]
             for j in range(2):
                 self.U[j]=self.U[j]/(np.sum(self.U[0])+np.sum(self.U[1]))
                 U_min.append([np.min(self.U[j]),np.argmin(self.U[j])])
-            #ラビ振動の方が良い
+            
+            #ラビ振動の方が良い場合
             if U_min[0][0] < U_min[1][0]:
                 self.C_best_i=U_min[0][1]
                 self.C_best=self.C[0][self.C_best_i]
                 self.exp_flag="rabi"
-            #ラムゼー干渉の方が良い
+            #ラムゼー干渉の方が良い場合
             else:
                 self.C_best_i=U_min[1][1]
                 self.C_best=self.C[1][self.C_best_i]
                 self.exp_flag="ramsey"
-            #描画に関する処理
-            if self.exp_flag=="rabi":
-                self.exp_list.append(0)
-            else:
-                self.exp_list.append(1)
+        #描画に関する処理
+        if self.exp_flag=="rabi":
+            self.exp_list.append(0)
+        else:
+            self.exp_list.append(1)
             
         
 
