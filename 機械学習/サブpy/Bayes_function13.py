@@ -52,6 +52,7 @@ class Bayes_Function(Q_H):
         self.ptable_x=[]
         self.ptable=[]
         self.risk=[]
+        self.exp_list=[]
         #パーティクル
         self.w=0 #現在のパーティクルの重みs
         self.ParamH={"a1":0,"b1":0,"a2":0,"b2":0,"w_theta":0,"D0":1,"AN":0,"QN":0,"Bz":0} #変更するパーティクルのパラメータ
@@ -108,10 +109,12 @@ class Bayes_Function(Q_H):
             for c in self.g:
                 if self.ParamC[c]==1:
                     n_C=n_C*self.g[c]
-                    if c=="MWfreq":
-                        n_log=n_C
-                    if c=="tw":
-                        n_C=n_C+n_log
+            
+            if exp=="ramsey":
+                return n_C
+            elif exp=="rabi":
+                return int(n_C/self.g["tw"])
+        
         else:
             if exp=="ramsey":
                 n_C=len(self.U[1])
@@ -119,7 +122,7 @@ class Bayes_Function(Q_H):
                 n_C=len(self.U[0])
             else:
                 n_C=len(self.U[0])+len(self.U[1])
-        return n_C
+            return n_C
         
     def Mean(self,w,x): #重み付き平均を計算する関数
         """
@@ -285,14 +288,18 @@ class Bayes_Function(Q_H):
     
     def Expmaker(self):
         temp=[]
+        temp_rabi=[]
         for i,p in enumerate(self.ParamC):
             if(self.ParamC[p]==1):
                 temp.append(np.linspace(self.C[i]-self.RangeC[p]/2,self.C[i]+self.RangeC[p]/2,self.g[p]))
             else:
                 temp.append([self.C[i]])
-            if p=="MWfreq":
-                temp_rabi=temp
-        return([np.array(list(itertools.product(*temp_rabi))),np.array(list(itertools.product(*temp_rabi)))])
+            if p != "tw":
+                if(self.ParamC[p]==1):
+                    temp_rabi.append(np.linspace(self.C[i]-self.RangeC[p]/2,self.C[i]+self.RangeC[p]/2,self.g[p]))
+                else:
+                    temp_rabi.append([self.C[i]])
+        return([np.array(list(itertools.product(*temp_rabi))),np.array(list(itertools.product(*temp)))])
     
     def Expsim(self,x,C): #実験と同様のシーケンスを行いデータの生成を行う関数
         """
@@ -301,15 +308,15 @@ class Bayes_Function(Q_H):
         self.rho_init() #量子状態の初期化
         self.H_0(x)
         if self.exp_flag=="rabi":
-            self.H_rot(C[0][4]) #C[4]:MW周波数
-            self.Vdrive_all(x,C[0][0],C[0][1],C[0][2]) #C[0]:V1, C[1]:V2, C[2]:ワイヤ間の位相差phi
-            self.Tevo(C[0][3]) #C[3]:MWwidth
+            self.H_rot(C[4]) #C[4]:MW周波数
+            self.Vdrive_all(x,C[0],C[1],C[2]) #C[0]:V1, C[1]:V2, C[2]:ワイヤ間の位相差phi
+            self.Tevo(C[3]) #C[3]:MWwidth
         elif self.exp_flag=="ramsey":
-            self.H_rot(C[1][4]) #C[4]:MW周波数
-            self.Vdrive_all(x,C[1][0],C[1][1],C[1][2]) #C[0]:V1, C[1]:V2, C[2]:ワイヤ間の位相差phi
-            self.Tevo(C[1][3]) #C[3]:MWwidth
-            self.Tevo_free(C[1][5]) #C[5]:wait
-            self.Tevo(C[1][3]) #C[3]:MWwidth
+            self.H_rot(C[4]) #C[4]:MW周波数
+            self.Vdrive_all(x,C[0],C[1],C[2]) #C[0]:V1, C[1]:V2, C[2]:ワイヤ間の位相差phi
+            self.Tevo(C[3]) #C[3]:MWwidth
+            self.Tevo_free(C[5]) #C[5]:wait
+            self.Tevo(C[3]) #C[3]:MWwidth
             
         expect0=self.exp(self.rho) #ms=0で測定
         if self.mode==0:
@@ -344,7 +351,7 @@ class Bayes_Function(Q_H):
                 self.exp_flag="ramsey"
             if self.i==0:
                 self.C_best_i=int(self.n_exp(self.exp_flag)*np.random.random())
-                self.C_best=self.C[self.C_best_i]
+                self.C_best=self.C[i][self.C_best_i]
             else:
                 for j in range(self.n_exp(self.exp_flag)):
                     self.ptable_C[i][j]=self.Expsim(self.x[np.argmax(self.w)],self.C[i][j])
@@ -405,6 +412,12 @@ class Bayes_Function(Q_H):
                 self.C_best_i=U_min[1][1]
                 self.C_best=self.C[1][self.C_best_i]
                 self.exp_flag="ramsey"
+            #描画に関する処理
+            if self.exp_flag=="rabi":
+                self.exp_list.append(0)
+            else:
+                self.exp_list.append(1)
+            
         
 
     def Update(self): #ベイズ推定を行う関数 引数(self,Ci)
@@ -441,15 +454,26 @@ class Bayes_Function(Q_H):
         plt.title("weight", fontsize=24)
         plt.show()
         
-    def show_U(self):
+    def show_U_rabi(self):
         """
         現在の効用を描画する関数
         """
-        Ui=np.linspace(1,self.n_exp(),self.n_exp())
-        plt.plot(Ui,self.U)
+        Ui=np.linspace(1,self.n_exp("rabi"),self.n_exp("rabi"))
+        plt.plot(Ui,self.U[0])
         plt.xlabel("experiment")
         plt.ylabel("Utility (a.u.)")
-        plt.title("Utility", fontsize=24)
+        plt.title("Utility Rabi", fontsize=24)
+        plt.show()
+        
+    def show_U_ramsey(self):
+        """
+        現在の効用を描画する関数
+        """
+        Ui=np.linspace(1,self.n_exp("ramsey"),self.n_exp("ramsey"))
+        plt.plot(Ui,self.U[0])
+        plt.xlabel("experiment")
+        plt.ylabel("Utility (a.u.)")
+        plt.title("Utility Ramsey", fontsize=24)
         plt.show()
         
     def show_r(self):
@@ -461,6 +485,13 @@ class Bayes_Function(Q_H):
         plt.ylabel("Bayes_risk ")
         plt.yscale("log") #y軸をlogスケールに
         plt.title("Bayes_risk", fontsize=24)
+        plt.show()
+        
+    def show_exp(self):
+        plt.plot(self.i_list,self.exp_list)
+        plt.xlabel("iteration#")
+        plt.ylabel("exp")
+        plt.title("Experiment", fontsize=24)
         plt.show()
         
     def show_hyper_parameter(self):
