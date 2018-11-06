@@ -402,8 +402,6 @@ class Bayes_Function(Q_H):
                     w_new=self.w*L_w.reshape([len(L_w),1]) #重みの更新
                     x_infer=self.Mean(w_new,self.x)
                     dU[j][i]=np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))) #実験C[i]でのベイズリスク
-                print(dU[j].shape)
-                print(self.U[j].shape)
                 self.U[j]=dU[j]*self.U[j]
             U_min=[]
             for j in range(2):
