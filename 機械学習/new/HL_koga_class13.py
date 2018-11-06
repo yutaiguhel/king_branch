@@ -142,7 +142,7 @@ for i in range(m.ex):
     m.show_w() #重みの表示
     #m.show_U_rabi() #効用の表示
     #m.show_U_ramsey() #ラムゼー干渉の効用の表示
-    #m.show_exp()
+    m.show_exp()
     #m.show_r() #ベイズリスクの表示
     
     """
