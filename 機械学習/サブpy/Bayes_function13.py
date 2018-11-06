@@ -235,7 +235,7 @@ class Bayes_Function(Q_H):
         self.x=np.delete(self.x,delist,0)
         if n != len(self.w):
             self.flag1=True
-            print("reapprox_exp")
+            print("reapprox_par")
         else:
             self.flag1=False
     
@@ -340,7 +340,10 @@ class Bayes_Function(Q_H):
         self.mode=1 #Expsimでms=0の確率を算出
         self.ptable_x=np.zeros([self.n_particles(),1])
         for i in range(self.n_particles()):
-            self.ptable_x[i]=self.Expsim(self.x[i],self.C_best)
+            if self.exp_flag=="rabi":
+                self.ptable_x[i]=self.Expsim(self.x[i],self.C_best[0])
+            elif self.exp_flag=="ramsey":
+                self.ptable_x[i]=self.Expsim(self.x[i],self.C_best[1])
     
     def Prob_Lookup_C(self):
         self.exp_flag="rabi"
@@ -382,8 +385,10 @@ class Bayes_Function(Q_H):
         効用としてベイズリスクを計算する関数
         推定1回目はランダムに実験を選ぶ
         """
-        
-        if self.i != 0:
+        if self.i==0:
+            self.C_best_i=[np.argmin(self.U[0]),np.argmin(self.U[1])]
+            self.C_best=[self.C[0][self.C_best_i[0]], self.C[1][self.C_best_i[1]]]
+        else:
             m=np.argmax(self.w)
             L_w=np.ones(self.n_particles())
             dU=[np.zeros([self.n_exp("rabi"),1]),np.zeros([self.n_exp("ramsey"),1])]
@@ -393,7 +398,7 @@ class Bayes_Function(Q_H):
                 if j==1:
                     exp="ramsey"
                 for i in range(self.n_exp(exp)):
-                    L_w[m]=binom.pmf(self.num,n=self.d,p=self.ptable_C[j][i])#各パーティクルでの実験でms=0にいた確率
+                    L_w[m]=binom.pmf(self.num[j],n=self.d,p=self.ptable_C[j][i])#各パーティクルでの実験でms=0にいた確率
                     w_new=self.w*L_w.reshape([len(L_w),1]) #重みの更新
                     x_infer=self.Mean(w_new,self.x)
                     dU[j][i]=np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))) #実験C[i]でのベイズリスク
@@ -407,35 +412,35 @@ class Bayes_Function(Q_H):
             
             #ラビ振動の方が良い場合
             if U_min[0][0] < U_min[1][0]:
-                self.C_best_i=U_min[0][1]
-                self.C_best=self.C[0][self.C_best_i]
                 self.exp_flag="rabi"
+                self.exp_list.append(0)
             #ラムゼー干渉の方が良い場合
             else:
-                self.C_best_i=U_min[1][1]
-                self.C_best=self.C[1][self.C_best_i]
                 self.exp_flag="ramsey"
-            #描画に関する処理
-            if self.exp_flag=="rabi":
-                self.exp_list.append(0)
-            else:
                 self.exp_list.append(1)
-            
-        
+            self.C_best_i=[U_min[0][1],U_min[1][1]]
+            self.C_best=[self.C[0][self.C_best_i[0]], self.C[1][self.C_best_i[1]]]
 
     def Update(self): #ベイズ推定を行う関数 引数(self,Ci)
         """
         パーティクルの重みを更新する関数
         """
+        #ラビ振動とラムゼー干渉の実験を行う
+        exp_flag_best=self.exp_flag
         self.mode=1
-        self.p_exp=self.Expsim(self.x0,self.C_best)#真値におけるms0の確立
+        self.p_exp=[]
+        self.exp_flag="rabi"
+        self.p_exp.append(self.Expsim(self.x0,self.C_best[0]))#真値におけるms0の確立
+        self.exp_flag="ramsey"
+        self.p_exp.append(self.Expsim(self.x0,self.C_best[1]))#真値におけるms0の確立
         self.num=binomial(self.d, self.p_exp)#実験をd回行いｍs=0であった回数
-        if self.ptable_mode=="cross":
-            temp=binom.pmf(self.num,n=self.d,p=self.ptable_x)#各パーティクルでの実験でms=0にいた確率
-            self.w=self.w*temp.reshape([len(temp),1]) #重みの更新
-        elif self.ptable_mode=="all":
-            temp=binom.pmf(self.num,n=self.d,p=self.ptable)[:,self.C_best_i]#各パーティクルでの実験でms=0にいた確率
-            self.w=self.w*temp #重みの更新
+        self.exp_flag=exp_flag_best
+        if exp_flag_best=="rabi":
+            _num=self.num[0]
+        elif exp_flag_best=="ramsey":
+            _num=self.num[1]
+        temp=binom.pmf(_num,n=self.d,p=self.ptable_x)#各パーティクルでの実験でms=0にいた確率
+        self.w=self.w*temp.reshape([len(temp),1]) #重みの更新
         self.w=self.w/np.sum(self.w) #重みの規格化
     
     def Bayes_risk(self): #ベイズリスクを計算する関数
@@ -521,37 +526,3 @@ class Bayes_Function(Q_H):
         print(self.ParamC)
         print(self.RangeC)
         print("現在のパーティクルの数:%d" %(self.n_particles()))
-        print("ルックアップテーブルの表式 %s" %(self.ptable_mode))
-        
-    
-    #=================================GRAPE====================================
-    def Tevo_operator(self,U_init,width):
-        HI=Vd+H0-HfMW
-        U=(-2*pi*1j*HI*width).expm()
-        Ud=U*U_init
-        return Ud
-    
-    def GRAPEpulse(self):
-        m=np.argmax(self.w)
-        C_known=[]
-        for i in range(len(self.Ac_list)):
-            if self.Ac_list[i] != 0:
-                C_known.append(self.Ac_list[i])
-        grape=GRAPE(self.x[m][0],self.x[m][1],0,C_known,C_inhomo,Be,theta,phi1,phi2,state_init,
-                state_goal,weighting_value,permax,pulse_time,t_div,target_list)
-    
-        phi_array, self.omega_array=grape.optimize()
-        return self.omega_array
-    
-    def GRAPE_operator(self,x,omega_j):
-        H0=self.H(x)
-        HfMW=self.H_rot(C[2])
-        C_list=[]
-        for i in range(len(self.Ac_list)):
-            C_list.append(2)
-        U0=tensor(III,III,self.C_mat)
-        U=U0
-        for i in range(len(omega_j)):
-            VdMW=self.Vdrive_all(omega_j[i])
-            U=self.Tevo_operator(H0,VdMW,HfMW,U,t_div)
-        return U
