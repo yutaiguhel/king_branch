@@ -17,9 +17,9 @@ Created on Thu Sep 27 14:01:39 2018
 import sys
 #sys.path.append("C:/Users/yuta/.ipython/profile_default/GRAPE/new")
 sys.path.append("C:/koga/実験系/king_branch/機械学習/サブpy")
-from Q_H05_1 import*
+from Q_H06_1 import*
 #from Q_module_grape_qutip_koga02 import*
-from Bayes_function12 import*
+from Bayes_function13 import*
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 #==============================プログラム起動時刻の記録=============================
@@ -40,9 +40,10 @@ m.wire=1
 #============================実験パラメータの変更==================================
 m.V1=1.5 #ワイヤ1の電圧
 m.t=2.0 #MWwidth
-m.g=     {"V1":30,"V2":10,"phi":10,  "MWwidth":30, "MWfreq":10} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
-m.ParamC={"V1":1, "V2":0, "phi":0,  "MWwidth":1,  "MWfreq":0} #V1,V2,phi,MWwidth,MWfreq 変更する場合は1
-m.RangeC={"V1":2.9, "V2":1, "phi":360,"MWwidth":3.98,"MWfreq":4} #実験設計パラメータの拡張範囲
+m.tw=1.0 #wait time
+m.g=     {"V1":30,"V2":10,"phi":10,  "MWwidth":30, "MWfreq":10,"tw":10} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
+m.ParamC={"V1":1, "V2":0, "phi":0,  "MWwidth":1,  "MWfreq":0,"tw":1} #V1,V2,phi,MWwidth,MWfreq 変更する場合は1
+m.RangeC={"V1":2.9, "V2":1, "phi":360,"MWwidth":3.98,"MWfreq":4,"tw":0.5} #実験設計パラメータの拡張範囲
 #============================推定パラメータの変更==================================
 m.a1=20
 m.b1=1.0
@@ -71,7 +72,7 @@ V_list=[]
 #パーティクルの作成
 m.x=m.Particlemaker(m.x,m.n,m.ParamH,m.RangeH)
 #実験候補の作成
-m.C=m.Particlemaker(m.C,m.g,m.ParamC,m.RangeC)
+m.C=m.Expemaker()
 time.sleep(0.1)
 #===============================実験シミュレーション開始=============================
 tim0=time.time()
@@ -91,14 +92,15 @@ for i in range(m.ex):
         m.flag1=True
         
     #量子操作のリサンプリング
-    if 1.0/sum(m.U*m.U)<len(m.U)*m.resample_threshold: #量子操作群の再配分
-        m.U,m.C=m.resample(m.U,m.C)
-        m.flag2=True
+    for j in range(2):
+        if 1.0/sum(m.U[j]*m.U[j])<len(m.U[j])*m.resample_threshold: #量子操作群の再配分
+            m.U[j],m.C[j]=m.resample(m.U[j],m.C[j])
+            m.flag2=True
     
     #重み最大のパーティクルについて確率のルックアップテーブルを作成.
     flag=m.flag1|m.flag2
     if flag==True or i==0:
-        m.Prob_Lookup(m.x[np.argmax(m.w)],m.C) #ptable_Cを用意する
+        m.Prob_Lookup_C() #ptable_Cを用意する
         
           
     #効用の計算
@@ -120,8 +122,7 @@ for i in range(m.ex):
     #効用最大の実験設計で確率のルックアップテーブルを作成
     flag=m.flag1|m.flag2
     if flag==True or i==0:
-        if m.ptable_mode=="cross":
-            m.Prob_Lookup(m.x,m.C_best) #ptable_xを用意する
+        m.Prob_Lookup_x() #ptable_xを用意する
     
     #ベイズ推定
     m.Update()#ベイズ推定
