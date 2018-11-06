@@ -51,7 +51,7 @@ class Q_H:
         C_list=[]
         for i in range(len(Q_H.Ac_list)):
             C_list.append(2)
-        self.C_mat=Qobj(qeye(2**len(Q_H.Ac_list)),dims=[C_list,C_list])/2**len(Q_H.Ac_list)
+        self.C_mat=Qobj(qeye(2**len(Q_H.Ac_list)),dims=[C_list,C_list])
         return self.C_mat
         
     def H_0(self,x):
@@ -131,9 +131,9 @@ class Q_H:
     def exp(self,rhof): #量子状態の期待値を計算する関数
         #a:density matrix, b:projector of electron, c:Nuclear, d:13C1, f:13C2, g:13C3 
         if len(self.Ac_list) != 0:
-            e=(rhof*tensor(S0,III/3,self.C_mat/(2**len(self.Ac_list)))).tr() #expected value
+            e=(tensor(S0,III,self.C_mat)*rhof).tr() #expected value
         else:
-            e=(rhof*tensor(S0,III/3)).tr()
+            e=(tensor(S0,III)*rhof).tr()
         e=e.real
         return e
     
