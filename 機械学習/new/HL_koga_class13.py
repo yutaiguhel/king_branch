@@ -36,15 +36,15 @@ m.d=1000 #推定に使う実験データの数
 m.a=0.98 #リサンプリング強度
 m.approx_ratio=0.98 #パーティクルを残す割合
 m.resampling_threshold=0.2 #リサンプリング閾値
-m.bayes_threshold=150
+m.bayes_threshold=50
 m.wire=1
 #============================実験パラメータの変更==================================
 m.V1=1.5 #ワイヤ1の電圧
 m.t=2.0 #MWwidth
 m.tw=1.0 #wait time
-m.g=     {"V1":10,"V2":10,"phi":10,  "MWwidth":10, "MWfreq":10,"tw":10} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
+m.g=     {"V1":10,"V2":30,"phi":10,  "MWwidth":10, "MWfreq":10,"tw":10} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
 m.ParamC={"V1":1, "V2":0, "phi":0,  "MWwidth":1,  "MWfreq":0,"tw":1} #V1,V2,phi,MWwidth,MWfreq 変更する場合は1
-m.RangeC={"V1":2.9, "V2":1, "phi":360,"MWwidth":3.98,"MWfreq":4,"tw":0.5} #実験設計パラメータの拡張範囲
+m.RangeC={"V1":2.9, "V2":1, "phi":360,"MWwidth":3.98,"MWfreq":4,"tw":1.9} #実験設計パラメータの拡張範囲
 #============================推定パラメータの変更==================================
 m.a1=20
 m.b1=1.0
@@ -140,21 +140,26 @@ for i in range(m.ex):
     #==========================デバッグ用結果描画=================================
     
     m.show_w() #重みの表示
-    m.show_U_rabi() #効用の表示
-    m.show_U_ramsey() #ラムゼー干渉の効用の表示
-    m.show_exp()
-    m.show_r() #ベイズリスクの表示
+    #m.show_U_rabi() #効用の表示
+    #m.show_U_ramsey() #ラムゼー干渉の効用の表示
+    #m.show_exp()
+    #m.show_r() #ベイズリスクの表示
     
+    """
+    fig=plt.figure()
+    ax1 = fig.add_subplot(211)
+    ax2 = fig.add_subplot(212)
     
     a_list.append(xout[0][0])
-    plt.plot(m.i_list,a_list)
-    plt.title("a1",fontsize=24)
-    plt.show()
-    
+    ax1.plot(m.i_list,a_list)
     b_list.append(xout[0][1])
-    plt.plot(m.i_list,b_list)
-    plt.title("b1",fontsize=24)
-    plt.show()
+    ax2.plot(m.i_list,b_list)
+    #ax1.set_title("a1",fontsize=24)
+    #ax2.set_title("b1",fontsize=24)
+
+    fig.tight_layout()  # タイトルとラベルが被るのを解消
+    #fig.show()
+    """
     
         
     #1推定にかかった時間
