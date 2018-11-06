@@ -5,7 +5,7 @@ Created on Fri Oct 26 21:08:39 2018
 @author: yuta
 """
 import time
-from Q_H05_1 import*
+from Q_H06_1 import*
 import itertools
 from scipy.stats import binom
 from numpy.random import*
@@ -38,6 +38,7 @@ class Bayes_Function(Q_H):
         self.state=0 #0:ms=0で射影測定,1:ms=±1で射影測定
         self.flag1=False #パーティクルの数が変化したらTrue
         self.flag2=False #実験設計の数が変化したらTrue
+        self.exp_flag="rabi"
         self.Q=0 #ベイズリスクの重み行列
         self.U=0 #効用
         self.B_R=0 #ベイズリスク
@@ -60,9 +61,10 @@ class Bayes_Function(Q_H):
         self.V2=1 #ワイヤ2の電圧[V]
         self.phi=180*pi/180 #ワイヤ間の位相差[rad]
         self.t=0.05 #MWパルス長[us]
+        self.tw=1.0 #ラムゼー干渉の待機時間[us]
         self.MWf=2870 #MW周波数の中心[MHz]
-        self.ParamC={"V1":0,"V2":0,"phi":1,"MWwidth":1,"MWfreq":1} #V1,V2,phi,MWwidth,MWfreq #変更する量子操作のパラメータ
-        self.RangeC={"V1":1,"V2":1,"phi":360,"MWwidth":0.05,"MWfreq":10} #変更する範囲
+        self.ParamC={"V1":0,"V2":0,"phi":1,"MWwidth":1,"MWfreq":1,"tw":1} #V1,V2,phi,MWwidth,MWfreq #変更する量子操作のパラメータ
+        self.RangeC={"V1":1,"V2":1,"phi":360,"MWwidth":0.05,"MWfreq":10,"tw":0.5} #変更する範囲
         self.C_best=0
         self.C_best_i=0
         #GRAPE
@@ -96,17 +98,27 @@ class Bayes_Function(Q_H):
             n_p=len(self.w)
         return n_p
     
-    def n_exp(self):
+    def n_exp(self,exp):
         """
         実験設計の数を返す
         """
         n_C=1
+        #全実験設計の数を返す
         if self.i==0:
             for c in self.g:
                 if self.ParamC[c]==1:
                     n_C=n_C*self.g[c]
+                    if c=="MWfreq":
+                        n_log=n_C
+                    if c=="tw":
+                        n_C=n_C+n_log
         else:
-            n_C=len(self.U)
+            if exp=="ramsey":
+                n_C=len(self.U[1])
+            elif exp=="rabi":
+                n_C=len(self.U[0])
+            else:
+                n_C=len(self.U[0])+len(self.U[1])
         return n_C
         
     def Mean(self,w,x): #重み付き平均を計算する関数
@@ -127,7 +139,7 @@ class Bayes_Function(Q_H):
         """
         実験設計の初期値代入
         """
-        self.C=[self.V1, self.V2, self.phi, self.t, self.MWf]
+        self.C=[self.V1, self.V2, self.phi, self.t, self.MWf, self.tw]
     
     def init_w(self):
         """
@@ -140,15 +152,9 @@ class Bayes_Function(Q_H):
         """
         効用を一様分布に初期化
         """
-        n_C=self.n_exp()
-        self.U=np.ones([n_C,1])
-    
-    def init_R(self):
-        """
-        ベイズリスクを一様分布に初期化
-        """
-        n_C=self.n_exp()
-        self.B_R=np.ones([n_C,1])
+        n_C_rabi=self.n_exp("rabi")
+        n_C_ramsey=self.n_exp("ramsey")
+        self.U=[np.ones([n_C_rabi,1]),np.ones([n_C_ramsey,1])]
     
     def init_x(self):
         """
@@ -236,29 +242,30 @@ class Bayes_Function(Q_H):
         ws:昇順に並び替えた重み
         wsの(m+1)番目の要素よりも大きい重みのパーティクルは残す
         """
-        n=len(self.U)
-        Us=sorted(self.U)
-        m=floor(n*(1.0-self.approx_ratio))
-        if m<1:
-            m=0
-        j=0
-        delist=[]
-        while j!=m:
-            i=0
-            for i in range(n):
-                if self.U[i]==Us[j] and n!=0:
-                    delist.append(i)
-                    j=j+1
-                if j==m:
-                    break
-        self.U=np.delete(self.U,delist,0)
-        self.U=self.U/sum(self.U)
-        self.U=np.delete(self.U,delist,0)
-        if n != len(self.U):
-            self.flag2=True
-            print("reapprox_exp")
-        else:
-            self.flag2=False
+        for i in range(2):
+            n=len(self.U[i])
+            Us=sorted(self.U[i])
+            m=floor(n*(1.0-self.approx_ratio))
+            if m<1:
+                m=0
+            j=0
+            delist=[]
+            while j!=m:
+                i=0
+                for l in range(n):
+                    if self.U[i][l]==Us[j] and n!=0:
+                        delist.append(l)
+                        j=j+1
+                    if j==m:
+                        break
+            self.U[i]=np.delete(self.U[i],delist,0)
+            self.U[i]=self.U[i]/sum(self.U[i])
+            self.U[i]=np.delete(self.U[i],delist,0)
+            if n != len(self.U[i]):
+                self.flag2=True
+                print("reapprox_exp"+str(i))
+            else:
+                self.flag2=False
     
     def Particlemaker(self,x,n,Param,Range): #パーティクルを生成する関数
         #itertools.product与えられた変数軍([x1,x2,x3],[y1,y2])の総重複なし組み合わせを配列として出力
@@ -276,15 +283,35 @@ class Bayes_Function(Q_H):
                 temp.append([x[i]])
         return(np.array(list(itertools.product(*temp))))
     
+    def Expmaker(self):
+        temp=[]
+        for i,p in enumerate(self.ParamC):
+            if(self.ParamC[p]==1):
+                temp.append(np.linspace(self.C[i]-self.RangeC[p]/2,self.C[i]+self.RangeC[p]/2,self.g[p]))
+            else:
+                temp.append([self.C[i]])
+            if p=="MWfreq":
+                temp_rabi=temp
+        return([np.array(list(itertools.product(*temp_rabi))),np.array(list(itertools.product(*temp_rabi)))])
+    
     def Expsim(self,x,C): #実験と同様のシーケンスを行いデータの生成を行う関数
         """
         パーティクルxに実験Cで実験シミュレーションを行う関数
         """
+        self.rho_init() #量子状態の初期化
         self.H_0(x)
-        self.H_rot(C[4]) #C[4]:MW周波数
-        self.Vdrive_all(x,C[0],C[1],C[2]) #C[0]:V1, C[1]:V2, C[2]:ワイヤ間の位相差phi
-        rhof=self.Tevo(C[3]) #C[3]:MWwidth
-        expect0=self.exp(rhof) #ms=0で測定
+        if self.exp_flag=="rabi":
+            self.H_rot(C[0][4]) #C[4]:MW周波数
+            self.Vdrive_all(x,C[0][0],C[0][1],C[0][2]) #C[0]:V1, C[1]:V2, C[2]:ワイヤ間の位相差phi
+            self.Tevo(C[0][3]) #C[3]:MWwidth
+        elif self.exp_flag=="ramsey":
+            self.H_rot(C[1][4]) #C[4]:MW周波数
+            self.Vdrive_all(x,C[1][0],C[1][1],C[1][2]) #C[0]:V1, C[1]:V2, C[2]:ワイヤ間の位相差phi
+            self.Tevo(C[1][3]) #C[3]:MWwidth
+            self.Tevo_free(C[1][5]) #C[5]:wait
+            self.Tevo(C[1][3]) #C[3]:MWwidth
+            
+        expect0=self.exp(self.rho) #ms=0で測定
         if self.mode==0:
             if rand()>=expect0:
                 mes=1 #ms=+1,-1
@@ -299,31 +326,28 @@ class Bayes_Function(Q_H):
                     mes=0
         return mes
     
-    def Prob_Lookup(self,x,C): #確率のルックアップテーブルを作る。もっと軽量化したい
+    def Prob_Lookup_x(self): #確率のルックアップテーブルを作る。もっと軽量化したい
         """
         確率のルックアップテーブルを作成する
         allの場合,ルックアップテーブルの形は(パーティクル数 * 実験設計数)
         """
         self.mode=1 #Expsimでms=0の確率を算出
-        if self.ptable_mode=="cross":
-            if len(x) == self.n_particles():#各パーティクルについてある実験Cで実験を行う
-                self.ptable_x=np.zeros([self.n_particles(),1])
-                for i in range(self.n_particles()):
-                    self.ptable_x[i]=self.Expsim(self.x[i],C)
-            
-            else: #あるパーティクルについて全実験設計で実験を行う
-                if self.i==0:
-                    self.C_best_i=int(self.n_exp()*np.random.random())
-                    self.C_best=self.C[self.C_best_i]
-                self.ptable_C=np.zeros([self.n_exp(),1])
-                for i in range(self.n_exp()):
-                    self.ptable_C[i]=self.Expsim(x,self.C[i])
-        
-        elif (self.ptable_mode=="all"):
-            self.ptable=np.zeros([self.n_particles(),self.n_exp()])
-            for i in range(self.n_exp()):
-                for j in range(self.n_particles()):
-                    self.ptable[j,i]=self.Expsim(self.x[j],self.C[i])
+        self.ptable_x=np.zeros([self.n_particles(),1])
+        for i in range(self.n_particles()):
+            self.ptable_x[i]=self.Expsim(self.x[i],self.C_best)
+    
+    def Prob_Lookup_C(self):
+        self.exp_flag=="rabi"
+        self.ptable_C=[np.zeros([self.n_exp("rabi"),1]),np.zeros([self.n_exp("ramsey"),1])]
+        for i in range(2):
+            if i==1:
+                self.exp_flag="ramsey"
+            if self.i==0:
+                self.C_best_i=int(self.n_exp(self.exp_flag)*np.random.random())
+                self.C_best=self.C[self.C_best_i]
+            else:
+                for j in range(self.n_exp(self.exp_flag)):
+                    self.ptable_C[i][j]=self.Expsim(self.x[np.argmax(self.w)],self.C[i][j])
                     
     def Entropy(self,p):
         """
@@ -355,16 +379,33 @@ class Bayes_Function(Q_H):
         if self.i != 0:
             m=np.argmax(self.w)
             L_w=np.ones(self.n_particles())
-            dU=np.zeros([self.n_exp(),1])
-            for i in range(self.n_exp()):
-                L_w[m]=binom.pmf(self.num,n=self.d,p=self.ptable_C[i])#各パーティクルでの実験でms=0にいた確率
-                w_new=self.w*L_w.reshape([len(L_w),1]) #重みの更新
-                x_infer=self.Mean(w_new,self.x)
-                dU[i]=np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))) #実験C[i]でのベイズリスク
-            self.U=dU*self.U
-            self.U=self.U/np.sum(self.U)
-        self.C_best_i=np.argmin(self.U)
-        self.C_best=self.C[self.C_best_i]
+            dU=[np.zeros([self.n_exp("rabi"),1]),np.zeros([self.n_exp("ramsey"),1])]
+            exp="rabi"
+            #それぞれの実験で効用を計算
+            for j in range(2):
+                if j==1:
+                    exp="ramsey"
+                for i in range(self.n_exp(exp)):
+                    L_w[m]=binom.pmf(self.num,n=self.d,p=self.ptable_C[i])#各パーティクルでの実験でms=0にいた確率
+                    w_new=self.w*L_w.reshape([len(L_w),1]) #重みの更新
+                    x_infer=self.Mean(w_new,self.x)
+                    dU[0][i]=np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))) #実験C[i]でのベイズリスク
+                self.U[j]=dU[j]*self.U[j]
+            U_min=[]
+            for j in range(2):
+                self.U[j]=self.U[j]/(np.sum(self.U[0])+np.sum(self.U[1]))
+                U_min.append([np.min(self.U[j]),np.argmin(self.U[j])])
+            #ラビ振動の方が良い
+            if U_min[0][0] < U_min[1][0]:
+                self.C_best_i=U_min[0][1]
+                self.C_best=self.C[0][self.C_best_i]
+                self.exp_flag="rabi"
+            #ラムゼー干渉の方が良い
+            else:
+                self.C_best_i=U_min[1][1]
+                self.C_best=self.C[1][self.C_best_i]
+                self.exp_flag="ramsey"
+        
 
     def Update(self): #ベイズ推定を行う関数 引数(self,Ci)
         """
