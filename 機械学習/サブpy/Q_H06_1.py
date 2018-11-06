@@ -27,7 +27,7 @@ class Q_H:
     muN=5.05078324*1e-27/h #核磁子[J/T]
     Be=4.5*1e-5 #地磁気[T]
     Bo=-0.450*1e-4 #外部磁場[T]
-    Ac_list=[]#[-3.265] #電子スピン-炭素同位体核スピン1間超微細相互作用[MHz]
+    Ac_list=[-3.265,-0.5]#[-3.265] #電子スピン-炭素同位体核スピン1間超微細相互作用[MHz]
     a1=500 #ワイヤ1のΩ-V変換式の係数1
     b1=0.6 #ワイヤ1Ω-V変換式の係数2
     a2=156 #ワイヤ2のΩ-V変換式の係数1
@@ -50,7 +50,7 @@ class Q_H:
         C_list=[]
         for i in range(len(Q_H.Ac_list)):
             C_list.append(2)
-        self.C_mat=Qobj(qeye(2**len(Q_H.Ac_list)),dims=[C_list,C_list])/2**len(Q_H.Ac_list)
+        self.C_mat=Qobj(qeye(2**len(Q_H.Ac_list)),dims=[C_list,C_list])
         return self.C_mat
         
     def rho_init(self):
@@ -136,9 +136,9 @@ class Q_H:
     def exp(self,rhof): #量子状態の期待値を計算する関数
         #a:density matrix, b:projector of electron, c:Nuclear, d:13C1, f:13C2, g:13C3 
         if len(self.Ac_list) != 0:
-            e=(rhof*tensor(S0,III/3,self.C_mat/(2**len(self.Ac_list)))).tr() #expected value
+            e=(tensor(S0,III,self.C_mat)*rhof).tr() #expected value
         else:
-            e=(rhof*tensor(S0,III/3)).tr()
+            e=(tensor(S0,III)*rhof).tr()
         e=e.real
         return e
     
