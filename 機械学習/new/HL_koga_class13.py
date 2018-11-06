@@ -53,7 +53,7 @@ m.b2=0.95
 #m.Bo=-0.46*1e-4 #外部磁場[T]
 m.Ac_list=[]#[-3.265]
 #炭素数に応じてParamH,RangeHの数だけParamH,RangeHを増やす
-m.n=     {"a1":10, "b1":10, "a2":10,  "b2":10,  "w_theta":10,     "D0":10,"AN":5,"QN":0,"Bz":0} #推定基底毎のパーティクルの数 a1,b1,a2,b2,w_theta,D0,An,Qn,Bz *Ac
+m.n=     {"a1":50, "b1":50, "a2":10,  "b2":10,  "w_theta":10,     "D0":10,"AN":5,"QN":0,"Bz":0} #推定基底毎のパーティクルの数 a1,b1,a2,b2,w_theta,D0,An,Qn,Bz *Ac
 m.ParamH={"a1":1,  "b1":1,  "a2":0,  "b2":0,  "w_theta":0,      "D0":0,"AN":0,"QN":0,"Bz":0} #a1,b1,a2,b2,w_theta,D0,AN,QN,外部磁場,*炭素 変更する場合は1
 m.RangeH={"a1":30, "b1":1,  "a2":20,"b2":0.8,"w_theta":2*np.pi,"D0":3,"AN":0.05,"QN":0,"Bz":0} #推定パラメータの広げる範囲
 m.params() #パラメータの変更を反映
