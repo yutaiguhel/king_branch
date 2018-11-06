@@ -395,7 +395,7 @@ class Bayes_Function(Q_H):
                     L_w[m]=binom.pmf(self.num,n=self.d,p=self.ptable_C[j][i])#各パーティクルでの実験でms=0にいた確率
                     w_new=self.w*L_w.reshape([len(L_w),1]) #重みの更新
                     x_infer=self.Mean(w_new,self.x)
-                    dU[0,i]=np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))) #実験C[i]でのベイズリスク
+                    dU[j][i]=np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))) #実験C[i]でのベイズリスク
                 print(dU[j].shape)
                 print(self.U[j].shape)
                 self.U[j]=dU[j]*self.U[j]
@@ -472,7 +472,7 @@ class Bayes_Function(Q_H):
         現在の効用を描画する関数
         """
         Ui=np.linspace(1,self.n_exp("ramsey"),self.n_exp("ramsey"))
-        plt.plot(Ui,self.U[0])
+        plt.plot(Ui,self.U[1])
         plt.xlabel("experiment")
         plt.ylabel("Utility (a.u.)")
         plt.title("Utility Ramsey", fontsize=24)
