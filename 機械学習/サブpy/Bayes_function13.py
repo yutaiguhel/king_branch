@@ -52,7 +52,7 @@ class Bayes_Function(Q_H):
         self.ptable_x=[]
         self.ptable=[]
         self.risk=[]
-        self.exp_list=[]
+        self.exp_list=[0]
         #パーティクル
         self.w=0 #現在のパーティクルの重みs
         self.ParamH={"a1":0,"b1":0,"a2":0,"b2":0,"w_theta":0,"D0":1,"AN":0,"QN":0,"Bz":0} #変更するパーティクルのパラメータ
@@ -382,6 +382,7 @@ class Bayes_Function(Q_H):
         効用としてベイズリスクを計算する関数
         推定1回目はランダムに実験を選ぶ
         """
+        
         if self.i != 0:
             m=np.argmax(self.w)
             L_w=np.ones(self.n_particles())
@@ -414,11 +415,11 @@ class Bayes_Function(Q_H):
                 self.C_best_i=U_min[1][1]
                 self.C_best=self.C[1][self.C_best_i]
                 self.exp_flag="ramsey"
-        #描画に関する処理
-        if self.exp_flag=="rabi":
-            self.exp_list.append(0)
-        else:
-            self.exp_list.append(1)
+            #描画に関する処理
+            if self.exp_flag=="rabi":
+                self.exp_list.append(0)
+            else:
+                self.exp_list.append(1)
             
         
 
