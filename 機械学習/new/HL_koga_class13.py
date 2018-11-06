@@ -72,7 +72,7 @@ V_list=[]
 #パーティクルの作成
 m.x=m.Particlemaker(m.x,m.n,m.ParamH,m.RangeH)
 #実験候補の作成
-m.C=m.Expemaker()
+m.C=m.Expmaker()
 time.sleep(0.1)
 #===============================実験シミュレーション開始=============================
 tim0=time.time()
@@ -137,8 +137,11 @@ for i in range(m.ex):
     #==========================デバッグ用結果描画=================================
     
     m.show_w() #重みの表示
-    m.show_U() #効用の表示
+    m.show_U_rabi() #効用の表示
+    m.show_U_ramsey #ラムゼー干渉の効用の表示
+    m.show_exp()
     m.show_r() #ベイズリスクの表示
+    
     
     a_list.append(xout[0][0])
     plt.plot(m.i_list,a_list)
