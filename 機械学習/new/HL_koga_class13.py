@@ -108,6 +108,7 @@ for i in range(m.ex):
     #m.UtilIG() #効用を平均情報量とする場合
     m.UtilIG_bayes_risk() #効用をベイズリスクとする場合
     
+    """
     t_list.append(m.C_best[3])
     plt.plot(m.i_list,t_list)
     plt.title("MWwidth",fontsize=24)
@@ -117,6 +118,7 @@ for i in range(m.ex):
     plt.plot(m.i_list,V_list)
     plt.title("V1",fontsize=24)
     plt.show()
+    """
     
     
     
