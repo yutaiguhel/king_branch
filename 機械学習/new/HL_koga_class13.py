@@ -76,6 +76,7 @@ m.x=m.Particlemaker(m.x,m.n,m.ParamH,m.RangeH)
 m.C=m.Expmaker()
 time.sleep(0.1)
 #===============================実験シミュレーション開始=============================
+print(m.x_dict)
 tim0=time.time()
 for i in range(m.ex):
     print("experiment#", i)
@@ -145,21 +146,18 @@ for i in range(m.ex):
     m.show_exp()
     #m.show_r() #ベイズリスクの表示
     
-    """
-    fig=plt.figure()
-    ax1 = fig.add_subplot(211)
-    ax2 = fig.add_subplot(212)
     
     a_list.append(xout[0][0])
-    ax1.plot(m.i_list,a_list)
+    plt.plot(m.i_list,a_list)
+    plt.title("a1",fontsize=24)
+    plt.show()
+    
     b_list.append(xout[0][1])
-    ax2.plot(m.i_list,b_list)
-    #ax1.set_title("a1",fontsize=24)
-    #ax2.set_title("b1",fontsize=24)
-
-    fig.tight_layout()  # タイトルとラベルが被るのを解消
-    #fig.show()
-    """
+    plt.plot(m.i_list,b_list)
+    plt.title("b1",fontsize=24)
+    plt.show()
+    
+    plt.plot()
     
         
     #1推定にかかった時間
