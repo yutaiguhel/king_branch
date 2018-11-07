@@ -76,7 +76,7 @@ class Bayes_Function(Q_H):
         self.x0=[self.x0_dict["a1"],self.x0_dict["b1"],self.x0_dict["a2"],self.x0_dict["b2"],self.x0_dict["w_theta"]
                 ,self.x0_dict["D0"],self.x0_dict["AN"],self.x0_dict["QN"],self.x0_dict["Bz"]]
         self.D=np.empty([self.d,1])
-        self.x_dict={"a1":self.a1+self.a1/5,"b1":self.b1-self.b1/20,"a2":self.a2-self.a2/10,"b2":self.b2+self.b2/5,"w_theta":self.w_theta
+        self.x_dict={"a1":self.a1+int(np.ceil(np.random.random(1)*5))-5/2,"b1":self.b1+int(np.ceil(np.random.random(1)*1.9))-1.9/2,"a2":self.a2-self.a2/10,"b2":self.b2+self.b2/5,"w_theta":self.w_theta
                 ,"D0":self.D0,"AN":self.AN,"QN":self.QN,"Bz":self.Be+self.Bo} #現在のパーティクル
         self.x=[self.x_dict["a1"],self.x_dict["b1"],self.x_dict["a2"],self.x_dict["b2"],self.x_dict["w_theta"]
                 ,self.x_dict["D0"],self.x_dict["AN"],self.x_dict["QN"],self.x_dict["Bz"]]
