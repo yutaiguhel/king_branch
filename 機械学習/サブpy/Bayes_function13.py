@@ -157,7 +157,7 @@ class Bayes_Function(Q_H):
         """
         n_C_rabi=self.n_exp("rabi")
         n_C_ramsey=self.n_exp("ramsey")
-        self.U=[np.ones([n_C_rabi,1]),np.ones([n_C_ramsey,1])]
+        self.U=[np.ones([n_C_rabi,1])/(n_C_rabi+n_C_ramsey),np.ones([n_C_ramsey,1])/(n_C_rabi+n_C_ramsey)]
     
     def init_x(self):
         """
@@ -403,11 +403,11 @@ class Bayes_Function(Q_H):
                     x_infer=self.Mean(w_new,self.x)
                     dU[j][i]=np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))) #実験C[i]でのベイズリスク
                 self.U[j]=dU[j]*self.U[j]
-            U_min=[]
+            U_min=[] #効用が最小となる指標、効用の最小値を格納する配列
             for j in range(2):
                 self.U[j]=self.U[j]/(np.sum(self.U[0])+np.sum(self.U[1]))
                 U_min.append([np.min(self.U[j]),np.argmin(self.U[j])])
-            
+            print(U_min[0][0],U_min[1][0])
             #ラビ振動の方が良い場合
             if U_min[0][0] < U_min[1][0]:
                 self.exp_flag="rabi"
