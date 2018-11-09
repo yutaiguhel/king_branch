@@ -18,11 +18,11 @@ import sys
 #sys.path.append("C:/Users/yuta/.ipython/profile_default/GRAPE/new")
 sys.path.append("C:/koga/実験系/king_branch/機械学習/サブpy")
 sys.dont_write_bytecode = True #__pycache__の生成を防ぐ
-from Q_H06_1 import*
+from Q_H07 import*
 #from Q_module_grape_qutip_koga02 import*
 from Bayes_function14 import*
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
+#from mpl_toolkits.mplot3d import Axes3D
 #==============================プログラム起動時刻の記録=============================
 start=time.asctime()
 print("start:",start)
@@ -34,7 +34,7 @@ m.ptable_mode="cross" #cross or all
 m.ex=500 #試行回数
 m.d=1000 #推定に使う実験データの数
 m.a=0.98 #リサンプリング強度
-m.approx_ratio=0.98 #パーティクルを残す割合
+m.approx_ratio=0.99 #パーティクルを残す割合
 m.resampling_threshold=0.2 #リサンプリング閾値
 m.bayes_threshold=10
 m.wire=1
@@ -44,7 +44,7 @@ m.t=2.0 #MWwidth
 m.tw=1.0 #wait time
 m.g=     {"V1":10,"V2":30,"phi":10,  "MWwidth":10, "MWfreq":10,"tw":10} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
 m.ParamC={"V1":1, "V2":0, "phi":0,  "MWwidth":1,  "MWfreq":0,"tw":1} #V1,V2,phi,MWwidth,MWfreq 変更する場合は1
-m.RangeC={"V1":2.9, "V2":1, "phi":360,"MWwidth":3.98,"MWfreq":4,"tw":1.9} #実験設計パラメータの拡張範囲
+m.RangeC={"V1":2.9, "V2":1, "phi":2*np.pi,"MWwidth":3.98,"MWfreq":4,"tw":1.9} #実験設計パラメータの拡張範囲
 #============================推定パラメータの変更==================================
 m.a1=20
 m.b1=1.0
@@ -61,7 +61,6 @@ m.params() #パラメータの変更を反映
 m.init_x0() #真のハミルトニアンに炭素追加
 m.init_x() #パーティクルに炭素追加
 m.init_C() #実験設計の初期化
-m.weighting_matrix() #ベイズリスクを計算する際の重み行列を初期化
 m.init_w() #重みの初期化
 m.init_U() #効用の初期化
 #==============================デバッグ用========================================
@@ -70,10 +69,9 @@ b_list=[]
 t_list=[]
 V_list=[]
 #===========================パーティクルと量子操作群の生成===========================
-#パーティクルの作成
-m.x=m.Particlemaker(m.x,m.n,m.ParamH,m.RangeH)
-#実験候補の作成
-m.C=m.Expmaker()
+m.x=m.Particlemaker(m.x,m.n,m.ParamH,m.RangeH)#パーティクルの作成
+m.weighting_matrix() #ベイズリスクを計算する際の重み行列を初期化, パーティクル生成後に呼び出す
+m.C=m.Expmaker() #実験候補の作成
 time.sleep(0.1)
 #===============================実験シミュレーション開始=============================
 print(m.x_dict)
@@ -137,6 +135,8 @@ for i in range(m.ex):
 
     xout=m.Mean(m.w,m.x)
     print("推定したハミルトニアン",xout[0]) #推定したハミルトニアンを出力
+    
+    #実験設計を初期設定に戻す
     
     #==========================デバッグ用結果描画=================================
     
