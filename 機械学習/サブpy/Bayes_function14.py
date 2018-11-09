@@ -5,7 +5,7 @@ Created on Fri Oct 26 21:08:39 2018
 @author: yuta
 """
 import time
-from Q_H06_1 import*
+from Q_H07 import*
 import itertools
 from scipy.stats import binom
 from numpy.random import*
@@ -187,7 +187,10 @@ class Bayes_Function(Q_H):
         """
         self.Q=np.zeros([len(self.x0), len(self.x0)])
         for i,p in enumerate(self.ParamH):
-            px=self.ParamH[p]
+            if self.ParamH[p]==1:
+                px=1/np.var(self.x.T[i]) #各パラメータの初期分散
+            else:
+                px=0
             self.Q[i][i]=px
     
     def resample(self,w,x): #パーティクルの移動と重みの再配分を行う関数
@@ -402,7 +405,7 @@ class Bayes_Function(Q_H):
                     w_new=self.w*L_w.reshape([len(L_w),1]) #重みの更新
                     x_infer=self.Mean(w_new,self.x)
                     dU[j][i]=np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))) #実験C[i]でのベイズリスク
-                self.U[j]=dU[j]*self.U[j]
+                self.U[j]=dU[j]
             U_min=[] #効用が最小となる指標、効用の最小値を格納する配列
             for j in range(2):
                 self.U[j]=self.U[j]/(np.sum(self.U[0])+np.sum(self.U[1]))
@@ -418,6 +421,8 @@ class Bayes_Function(Q_H):
                 self.exp_list.append(1)
             self.C_best_i=[U_min[0][1],U_min[1][1]]
             self.C_best=[self.C[0][self.C_best_i[0]], self.C[1][self.C_best_i[1]]]
+            
+            
 
     def Update(self): #ベイズ推定を行う関数 引数(self,Ci)
         """
