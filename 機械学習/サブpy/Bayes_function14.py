@@ -422,8 +422,6 @@ class Bayes_Function(Q_H):
             self.C_best_i=[U_min[0][1],U_min[1][1]]
             self.C_best=[self.C[0][self.C_best_i[0]], self.C[1][self.C_best_i[1]]]
             
-            
-
     def Update(self): #ベイズ推定を行う関数 引数(self,Ci)
         """
         パーティクルの重みを更新する関数
