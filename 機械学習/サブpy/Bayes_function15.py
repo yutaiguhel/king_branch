@@ -44,13 +44,11 @@ class Bayes_Function(Q_H):
         self.B_R=0 #ベイズリスク
         self.Utility="binomial"
         self.ptable_mode="all" #all or cross
-        self.num=0 #ms=0にいた回数
         self.p_exp=0 #真値におけるms=0にいた確率
         #結果格納配列
         self.i_list=[]
-        self.ptable_C=[]
-        self.ptable_x=[]
         self.ptable=[]
+        self.ptable_best=0
         self.risk=[]
         self.exp_list=[0]
         #パーティクル
@@ -113,7 +111,10 @@ class Bayes_Function(Q_H):
             if exp=="ramsey":
                 return n_C
             elif exp=="rabi":
-                return int(n_C/self.g["tw"])
+                if self.ParamC["tw"]==1:
+                    return int(n_C/self.g["tw"])
+                else:
+                    return n_C
         
         else:
             if exp=="ramsey":
@@ -188,7 +189,8 @@ class Bayes_Function(Q_H):
         self.Q=np.zeros([len(self.x0), len(self.x0)])
         for i,p in enumerate(self.ParamH):
             if self.ParamH[p]==1:
-                px=1/np.var(self.x.T[i]) #各パラメータの初期分散
+                px=1
+                #px=1/np.var(self.x.T[i]) #各パラメータの初期分散
             else:
                 px=0
             self.Q[i][i]=px
@@ -334,44 +336,18 @@ class Bayes_Function(Q_H):
                 if mes<0:
                     mes=0
         return mes
-    
-    def Prob_Lookup_x(self): #確率のルックアップテーブルを作る。もっと軽量化したい
-        """
-        確率のルックアップテーブルを作成する
-        allの場合,ルックアップテーブルの形は(パーティクル数 * 実験設計数)
-        """
-        self.mode=1 #Expsimでms=0の確率を算出
-        self.ptable_x=np.zeros([self.n_particles(),1])
-        for i in range(self.n_particles()):
-            if self.exp_flag=="rabi":
-                self.ptable_x[i]=self.Expsim(self.x[i],self.C_best[0])
-            elif self.exp_flag=="ramsey":
-                self.ptable_x[i]=self.Expsim(self.x[i],self.C_best[1])
-    
-    def Prob_Lookup_C(self):
-        self.exp_flag="rabi"
-        self.ptable_C=[np.zeros([self.n_exp("rabi"),1]),np.zeros([self.n_exp("ramsey"),1])]
-        for i in range(2):
-            if i==1:
-                self.exp_flag="ramsey"
-            if self.i==0:
-                self.C_best_i=int(self.n_exp(self.exp_flag)*np.random.random())
-                self.C_best=self.C[i][self.C_best_i]
-            else:
-                for j in range(self.n_exp(self.exp_flag)):
-                    self.ptable_C[i][j]=self.Expsim(self.x[np.argmax(self.w)],self.C[i][j])
                     
     def Prob_Lookup(self):
         ptable_rabi=np.zeros([self.n_particles(),self.n_exp("rabi")])
         ptable_ramsey=np.zeros([self.n_particles(),self.n_exp("ramsey")])
         self.ptable=[ptable_rabi,ptable_ramsey]
-        exp="rabi"
+        self.exp_flag="rabi"
         for i in range(2):
             if i==1:
-                exp="ramsey"
-            for k in range(self.n_exp(exp)):
+                self.exp_flag="ramsey"
+            for k in range(self.n_exp(self.exp_flag)):
                 for j in range(self.n_particles()):
-                    self.ptable[i,j,k]=self.Expsim(self.x[j],self.C[i][k])
+                    self.ptable[i][j][k]=self.Expsim(self.x[j],self.C[i][k])
                     
     def Entropy(self,p):
         """
@@ -394,65 +370,44 @@ class Bayes_Function(Q_H):
         self.U=self.U/np.sum(self.U)
         self.C_best_i=np.argmax(self.U)
         self.C_best=self.C[self.C_best_i]
-        
+            
     def UtilIG_bayes_risk(self):
-        """
-        効用としてベイズリスクを計算する関数
-        推定1回目はランダムに実験を選ぶ
-        """
-        if self.i==0:
-            self.C_best_i=[np.argmin(self.U[0]),np.argmin(self.U[1])]
-            self.C_best=[self.C[0][self.C_best_i[0]], self.C[1][self.C_best_i[1]]]
-        else:
-            m=np.argmax(self.w)
-            L_w=np.ones(self.n_particles())
-            dU=[np.zeros([self.n_exp("rabi"),1]),np.zeros([self.n_exp("ramsey"),1])]
-            exp="rabi"
-            #それぞれの実験で効用を計算
-            for j in range(2):
-                if j==1:
-                    exp="ramsey"
-                for i in range(self.n_exp(exp)):
-                    L_w[m]=binom.pmf(self.num[j],n=self.d,p=self.ptable_C[j][i])#各パーティクルでの実験でms=0にいた確率
-                    w_new=self.w*L_w.reshape([len(L_w),1]) #重みの更新
-                    x_infer=self.Mean(w_new,self.x)
-                    dU[j][i]=np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))) #実験C[i]でのベイズリスク
-                self.U[j]=dU[j]
-            U_min=[] #効用が最小となる指標、効用の最小値を格納する配列
-            for j in range(2):
-                self.U[j]=self.U[j]/(np.sum(self.U[0])+np.sum(self.U[1]))
-                U_min.append([np.min(self.U[j]),np.argmin(self.U[j])])
-            print(U_min[0][0],U_min[1][0])
-            #ラビ振動の方が良い場合
-            if U_min[0][0] < U_min[1][0]:
-                self.exp_flag="rabi"
-                self.exp_list.append(0)
-            #ラムゼー干渉の方が良い場合
-            else:
+        dU=np.array([np.empty([self.n_exp("rabi"),1]),np.empty([self.n_exp("ramsey"),1])])
+        self.exp_flag="rabi"
+        for i in range(2):
+            if i==1:
                 self.exp_flag="ramsey"
-                self.exp_list.append(1)
-            self.C_best_i=[U_min[0][1],U_min[1][1]]
-            self.C_best=[self.C[0][self.C_best_i[0]], self.C[1][self.C_best_i[1]]]
+            for k in range(self.n_exp(self.exp_flag)):
+                num=binomial(self.d,np.transpose(self.ptable[i],(1,0))[k])
+                num=self.Mean(self.w,num.reshape(num.shape[0],1))
+                L=binom.pmf(num,n=self.d,p=np.transpose(self.ptable[i],(1,0))[k]).reshape(np.transpose(self.ptable[i],(1,0))[k].shape[0],1)
+                w_new=L*self.w
+                x_infer=self.Mean(self.w,self.x)
+                x_infer_new=self.Mean(w_new,self.x)
+                self.U[i][k]=dU[i][k]*np.trace(self.Q*np.dot((x_infer_new[0] - x_infer[0]).T,(x_infer_new[0] - x_infer[0])))
+        for i in range(2):
+            self.U[i]=self.U[i]/(np.sum(self.U[0])+np.sum(self.U[1]))
+        U_min=[np.min(self.U[0]),np.min(self.U[1])]
+        if U_min[0] < U_min[1]:
+            self.exp_flag="rabi"
+            self.C_best_i=np.argmin(self.U[0])
+            self.C_best=self.C[0][self.C_best_i]
+            self.ptable_best=np.transpose(self.ptable[0],(1,0))[self.C_best_i]
+        else:
+            self.exp_flag="ramsey"
+            self.C_best_i=np.argmin(self.U[1])
+            self.C_best=self.C[1][self.C_best_i]
+            self.ptable_best=np.transpose(self.ptable[1],(1,0))[self.C_best_i]
             
     def Update(self): #ベイズ推定を行う関数 引数(self,Ci)
         """
         パーティクルの重みを更新する関数
         """
         #ラビ振動とラムゼー干渉の実験を行う
-        exp_flag_best=self.exp_flag
         self.mode=1
-        self.p_exp=[]
-        self.exp_flag="rabi"
-        self.p_exp.append(self.Expsim(self.x0,self.C_best[0]))#真値におけるms0の確立
-        self.exp_flag="ramsey"
-        self.p_exp.append(self.Expsim(self.x0,self.C_best[1]))#真値におけるms0の確立
-        self.num=binomial(self.d, self.p_exp)#実験をd回行いｍs=0であった回数
-        self.exp_flag=exp_flag_best
-        if exp_flag_best=="rabi":
-            _num=self.num[0]
-        elif exp_flag_best=="ramsey":
-            _num=self.num[1]
-        temp=binom.pmf(_num,n=self.d,p=self.ptable_x)#各パーティクルでの実験でms=0にいた確率
+        self.p_exp=self.Expsim(self.x0,self.C_best)#真値におけるms0の確立
+        num=binomial(self.d, self.p_exp)#実験をd回行いｍs=0であった回数
+        temp=binom.pmf(num,n=self.d,p=self.ptable_best)#各パーティクルでの実験でms=0にいた確率
         self.w=self.w*temp.reshape([len(temp),1]) #重みの更新
         self.w=self.w/np.sum(self.w) #重みの規格化
     
