@@ -156,6 +156,8 @@ for i in range(m.ex):
     ax1.set_title("a1",fontsize=24)
     ax2.set_title("b1",fontsize=24)
     fig.tight_layout()  # タイトルとラベルが被るのを解消   
+    
+    m.Show_region(0.95)
         
     #1推定にかかった時間
     tim1=time.time()
