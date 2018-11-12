@@ -420,6 +420,43 @@ class Bayes_Function(Q_H):
         self.risk.append(np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))))
     
     #=============================結果を描画する関数=============================
+    def Estimate_credible_region(self,level):
+        """
+        信用区間を求める関数
+        """
+        w_sorted_temp=[]
+        w_sorted_temp_id=[]
+        x_region_list=[]
+
+        for i in range(len(self.w)):
+            w_sort_temp=np.sort(self.w[i])[::-1]
+            w_sorted_temp.append(list(w_sort_temp))
+        self.w_sorted=np.array(w_sorted_temp)
+        
+        for i in range(len(self.w)):
+            w_sort_temp_id=np.argsort(self.w[i])[::-1]
+            w_sorted_temp_id.append(list(w_sort_temp_id))
+        self.w_sorted_id=np.array(w_sorted_temp_id)
+        
+        for i in range(len(self.w)):
+            cumsum_weights=np.cumsum(self.w[i])
+            id_cred=cumsum_weights<=level
+            x_temp=np.array(self.x[i])
+            x_region_list.append(list(x_temp[self.w_sorted_id[i]][id_cred]))
+            x_region=np.array(x_region_list)
+        
+        return x_region
+    
+    def Show_region(self,level):
+        for i,p in self.ParamH:
+            if ParamH[p]==1:
+                temp=[]
+                index=[]
+                for j in range(self.x.shape[0]):
+                    index.append(j)
+                    temp.append(self.x[i][j])
+                print("%s:"%p,min(temp),max(temp))
+    
     def show_w(self):
         """
         現在の重みを描画する関数
