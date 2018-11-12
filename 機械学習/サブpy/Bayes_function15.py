@@ -442,19 +442,23 @@ class Bayes_Function(Q_H):
             cumsum_weights=np.cumsum(self.w[i])
             id_cred=cumsum_weights<=level
             x_temp=np.array(self.x[i])
+            print(self.x[i])
+            print(x_temp[self.w_sorted_id[i]][id_cred])
             x_region_list.append(list(x_temp[self.w_sorted_id[i]][id_cred]))
             x_region=np.array(x_region_list)
         
         return x_region
     
     def Show_region(self,level):
-        for i,p in self.ParamH:
-            if ParamH[p]==1:
+        x_region=self.Estimate_credible_region(level)
+        print(x_region)
+        for i,p in enumerate(self.ParamH):
+            if self.ParamH[p]==1:
                 temp=[]
                 index=[]
                 for j in range(self.x.shape[0]):
                     index.append(j)
-                    temp.append(self.x[i][j])
+                    temp.append(x_region[j][i])
                 print("%s:"%p,min(temp),max(temp))
     
     def show_w(self):
