@@ -50,7 +50,7 @@ m.a1=20
 m.b1=1.0
 m.a2=15
 m.b2=0.95
-m.Bo=-0.46*1e-4 #外部磁場[T]
+m.Bo=-0.45*1e-4 #外部磁場[T]
 m.Ac_list=[]#[-3.265]
 #炭素数に応じてParamH,RangeHの数だけParamH,RangeHを増やす
 m.n=     {"a1":10, "b1":10, "a2":10,  "b2":10,  "w_theta":10,     "D0":10,"AN":5,"QN":0,"Bz":10} #推定基底毎のパーティクルの数 a1,b1,a2,b2,w_theta,D0,An,Qn,Bz *Ac
@@ -148,8 +148,14 @@ for i in range(m.ex):
     plt.title("b1",fontsize=24)
     plt.show()
     
-    plt.plot()
-    
+    fig=plt.figure()
+    ax1=fig.add_subplot(211)
+    ax2=fig.add_subplot(212)
+    ax1.plot(m.i_list,a_list)
+    ax2.plot(m.i_list,b_list)
+    ax1.set_title("a1",fontsize=24)
+    ax2.set_title("b1",fontsize=24)
+    fig.tight_layout()  # タイトルとラベルが被るのを解消   
         
     #1推定にかかった時間
     tim1=time.time()
