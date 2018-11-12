@@ -372,7 +372,6 @@ class Bayes_Function(Q_H):
         self.C_best=self.C[self.C_best_i]
             
     def UtilIG_bayes_risk(self):
-        dU=np.array([np.empty([self.n_exp("rabi"),1]),np.empty([self.n_exp("ramsey"),1])])
         self.exp_flag="rabi"
         for i in range(2):
             if i==1:
@@ -384,7 +383,7 @@ class Bayes_Function(Q_H):
                 w_new=L*self.w
                 x_infer=self.Mean(self.w,self.x)
                 x_infer_new=self.Mean(w_new,self.x)
-                self.U[i][k]=dU[i][k]*np.trace(self.Q*np.dot((x_infer_new[0] - x_infer[0]).T,(x_infer_new[0] - x_infer[0])))
+                self.U[i][k]=self.U[i][k]*np.trace(self.Q*np.dot((x_infer_new[0] - x_infer[0]).T,(x_infer_new[0] - x_infer[0])))
         for i in range(2):
             self.U[i]=self.U[i]/(np.sum(self.U[0])+np.sum(self.U[1]))
         U_min=[np.min(self.U[0]),np.min(self.U[1])]
