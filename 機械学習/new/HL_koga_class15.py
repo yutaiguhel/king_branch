@@ -156,7 +156,7 @@ for i in range(m.ex):
     tim1=time.time()
     print (tim1-tim0,"sec","\n")
     tim0=tim1
-    
+    break
     #推定を続けるか判断する
     if m.risk[i] < m.bayes_threshold:
         print("=======================End of estimation======================")
