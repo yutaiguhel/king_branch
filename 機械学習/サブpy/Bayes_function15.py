@@ -331,6 +331,8 @@ class Bayes_Function(Q_H):
         else:
             if self.state==0:
                 mes=expect0
+                if mes>0:
+                    mes=1
             else:
                 mes=1.0-expect0
                 if mes<0:
