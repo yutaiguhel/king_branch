@@ -42,8 +42,8 @@ m.wire=1
 m.V1=1.5 #ワイヤ1の電圧
 m.t=2.0 #MWwidth
 m.tw=1.0 #wait time
-m.g=     {"V1":10,"V2":30,"phi":10,  "MWwidth":10, "MWfreq":10,"tw":10} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
-m.ParamC={"V1":1, "V2":0, "phi":0,  "MWwidth":1,  "MWfreq":0,"tw":1} #V1,V2,phi,MWwidth,MWfreq 変更する場合は1
+m.g=     {"V1":2,"V2":30,"phi":10,  "MWwidth":2, "MWfreq":10,"tw":10} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
+m.ParamC={"V1":1, "V2":0, "phi":0,  "MWwidth":1,  "MWfreq":0,"tw":0} #V1,V2,phi,MWwidth,MWfreq 変更する場合は1
 m.RangeC={"V1":2.9, "V2":1, "phi":2*np.pi,"MWwidth":3.98,"MWfreq":4,"tw":1.9} #実験設計パラメータの拡張範囲
 #============================推定パラメータの変更==================================
 m.a1=20
@@ -53,8 +53,8 @@ m.b2=0.95
 m.Bo=-0.45*1e-4 #外部磁場[T]
 m.Ac_list=[]#[-3.265]
 #炭素数に応じてParamH,RangeHの数だけParamH,RangeHを増やす
-m.n=     {"a1":10, "b1":10, "a2":10,  "b2":10,  "w_theta":10,     "D0":10,"AN":5,"QN":0,"Bz":10} #推定基底毎のパーティクルの数 a1,b1,a2,b2,w_theta,D0,An,Qn,Bz *Ac
-m.ParamH={"a1":1,  "b1":1,  "a2":0,  "b2":0,  "w_theta":0,      "D0":0,"AN":0,"QN":0,"Bz":1} #a1,b1,a2,b2,w_theta,D0,AN,QN,外部磁場,*炭素 変更する場合は1
+m.n=     {"a1":2, "b1":2, "a2":10,  "b2":10,  "w_theta":10,     "D0":10,"AN":5,"QN":0,"Bz":10} #推定基底毎のパーティクルの数 a1,b1,a2,b2,w_theta,D0,An,Qn,Bz *Ac
+m.ParamH={"a1":1,  "b1":1,  "a2":0,  "b2":0,  "w_theta":0,      "D0":0,"AN":0,"QN":0,"Bz":0} #a1,b1,a2,b2,w_theta,D0,AN,QN,外部磁場,*炭素 変更する場合は1
 m.RangeH={"a1":30, "b1":1,  "a2":20,"b2":0.8,"w_theta":2*np.pi,"D0":3,"AN":0.05,"QN":0,"Bz":0.1*1e-4} #推定パラメータの広げる範囲
 m.params() #パラメータの変更を反映
 #==============================重み、パーティクルの初期化============================
@@ -68,6 +68,10 @@ a_list=[]
 b_list=[]
 t_list=[]
 V_list=[]
+a1_max_list=[]
+a1_min_list=[]
+b1_max_list=[]
+b1_min_list=[]
 #===========================パーティクルと量子操作群の生成===========================
 m.x=m.Particlemaker(m.x,m.n,m.ParamH,m.RangeH)#パーティクルの作成
 m.weighting_matrix() #ベイズリスクを計算する際の重み行列を初期化, パーティクル生成後に呼び出す
@@ -147,7 +151,7 @@ for i in range(m.ex):
     plt.plot(m.i_list,b_list)
     plt.title("b1",fontsize=24)
     plt.show()
-    
+    """
     fig=plt.figure()
     ax1=fig.add_subplot(211)
     ax2=fig.add_subplot(212)
@@ -155,9 +159,42 @@ for i in range(m.ex):
     ax2.plot(m.i_list,b_list)
     ax1.set_title("a1",fontsize=24)
     ax2.set_title("b1",fontsize=24)
-    fig.tight_layout()  # タイトルとラベルが被るのを解消   
+    fig.tight_layout()  # タイトルとラベルが被るのを解消  
+    """
+    a1_max=0
+    a1_min=50
+    for j in range(m.x.shape[0]):
+        if m.x[j][0]>a1_max:
+            a1_max=m.x[j][0]
+        if m.x[j][0]<a1_min:
+            a1_min=m.x[j][0]
+    a1_max_list.append(a1_max)
+    a1_min_list.append(a1_min)
+    plt.plot(m.i_list,a1_max_list,label="a1_max")
+    plt.plot(m.i_list,a1_min_list,label="a1_min")
+    plt.xlabel("iteration#",fontsize=16)
+    plt.ylabel("a1_region",fontsize=16)
+    plt.title("a1_region",fontsize=20)
+    plt.show()
     
-    m.Show_region(0.95)
+    b1_max=0
+    b1_min=50
+    for j in range(m.x.shape[0]):
+        if m.x[j][1]>b1_max:
+            b1_max=m.x[j][1]
+        if m.x[j][1]<b1_min:
+            b1_min=m.x[j][1]
+    b1_max_list.append(b1_max)
+    b1_min_list.append(b1_min)
+    plt.plot(m.i_list,b1_max_list,label="b1_max")
+    plt.plot(m.i_list,b1_min_list,label="b1_min")
+    plt.xlabel("iteration#",fontsize=16)
+    plt.ylabel("b1_region",fontsize=16)
+    plt.title("b1_region",fontsize=20)
+    plt.show()
+    
+    
+    #m.Show_region(0.95)
         
     #1推定にかかった時間
     tim1=time.time()
