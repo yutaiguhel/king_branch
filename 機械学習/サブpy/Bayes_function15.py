@@ -410,35 +410,6 @@ class Bayes_Function(Q_H):
         self.risk.append(np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))))
     
     #=============================結果を描画する関数=============================
-    def Estimate_credible_region(self,level):
-        """
-        信用区間を求める関数
-        """
-        w_sorted_temp=[]
-        w_sorted_temp_id=[]
-        x_region_list=[]
-
-        for i in range(len(self.w)):
-            w_sort_temp=np.sort(self.w[i])[::-1]
-            w_sorted_temp.append(list(w_sort_temp))
-        self.w_sorted=np.array(w_sorted_temp)
-        
-        for i in range(len(self.w)):
-            w_sort_temp_id=np.argsort(self.w[i])[::-1]
-            w_sorted_temp_id.append(list(w_sort_temp_id))
-        self.w_sorted_id=np.array(w_sorted_temp_id)
-        
-        for i in range(len(self.w)):
-            cumsum_weights=np.cumsum(self.w[i])
-            id_cred=cumsum_weights<=level
-            x_temp=np.array(self.x[i])
-            print(self.x[i])
-            print(x_temp[self.w_sorted_id[i]][id_cred])
-            x_region_list.append(list(x_temp[self.w_sorted_id[i]][id_cred]))
-            x_region=np.array(x_region_list)
-        
-        return x_region
-    
     def Show_region(self,level):
         x_region=self.Estimate_credible_region(level)
         print(x_region)
@@ -501,6 +472,26 @@ class Bayes_Function(Q_H):
         plt.ylabel("exp")
         plt.title("Experiment", fontsize=24)
         plt.show()
+        
+    def Show_result(self):
+        wi=np.linspace(1,self.n_particles(),self.n_particles())
+        Ui_rabi=np.linspace(1,self.n_exp("rabi"),self.n_exp("rabi"))
+        Ui_ramsey=np.linspace(1,self.n_exp("ramsey"),self.n_exp("ramsey"))
+        fig1=plt.figure()
+        ax1=fig1.add_subplot(221)
+        ax2=fig1.add_subplot(222)
+        ax3=fig1.add_subplot(223)
+        ax4=fig1.add_subplot(224)
+        ax1.plot(wi,self.w)
+        ax2.plot(Ui_rabi,self.U[0])
+        ax3.plot(Ui_ramsey,self.U[1])
+        ax4.set_yscale("log")
+        ax4.plot(self.i_list,self.risk)
+        ax1.set_title("Weight",fontsize=16)
+        ax2.set_title("Utility_rabi",fontsize=16)
+        ax3.set_title("Utility_ramsey",fontsize=16)
+        ax4.set_title("Bayes_risk",fontsize=16)
+        fig1.tight_layout()  # タイトルとラベルが被るのを解消
         
     def show_hyper_parameter(self):
         """
