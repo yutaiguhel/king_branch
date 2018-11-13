@@ -136,15 +136,18 @@ for i in range(m.ex):
     
     #==========================デバッグ用結果描画=================================
     m.Show_result()
-    m.Show_region(0.95)
     
     plt.figure(figsize=(10,7))
     
     a_list.append(xout[0][0])
+    pa=m.Region_edge(0.95,"a1")
+    a1_min_list.append(pa[0])
+    a1_max_list.append(pa[1])
     plt.subplot(2,1,1)
     plt.hlines(m.x0_dict["a1"],0,m.i_list[i],"r",label="True a1")
     plt.xlabel("iteration number",fontsize=20)
     plt.ylabel("a1",fontsize=20)
+    #plt.fill_between(m.i_list,a1_min_list,a1_max_list,facecolor='y',alpha=0.5)
     plt.plot(m.i_list,a_list,label="Infered a1")
     plt.legend(loc="upper right")
     plt.title("a1",fontsize=24)
@@ -160,40 +163,6 @@ for i in range(m.ex):
 
     plt.tight_layout()
     plt.show()
-    
-    """
-    a1_max=0
-    a1_min=50
-    for j in range(m.x.shape[0]):
-        if m.x[j][0]>a1_max:
-            a1_max=m.x[j][0]
-        if m.x[j][0]<a1_min:
-            a1_min=m.x[j][0]
-    a1_max_list.append(a1_max)
-    a1_min_list.append(a1_min)
-    plt.plot(m.i_list,a1_max_list,label="a1_max")
-    plt.plot(m.i_list,a1_min_list,label="a1_min")
-    plt.xlabel("iteration#",fontsize=16)
-    plt.ylabel("a1_region",fontsize=16)
-    plt.title("a1_region",fontsize=20)
-    plt.show()
-    
-    b1_max=0
-    b1_min=50
-    for j in range(m.x.shape[0]):
-        if m.x[j][1]>b1_max:
-            b1_max=m.x[j][1]
-        if m.x[j][1]<b1_min:
-            b1_min=m.x[j][1]
-    b1_max_list.append(b1_max)
-    b1_min_list.append(b1_min)
-    plt.plot(m.i_list,b1_max_list,label="b1_max")
-    plt.plot(m.i_list,b1_min_list,label="b1_min")
-    plt.xlabel("iteration#",fontsize=16)
-    plt.ylabel("b1_region",fontsize=16)
-    plt.title("b1_region",fontsize=20)
-    plt.show()
-    """
     
     
     #m.Show_region(0.95)
