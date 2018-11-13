@@ -417,21 +417,25 @@ class Bayes_Function(Q_H):
         w_sorted=np.sort(self.w,axis=0)[::-1]
         cumsum_weights=np.cumsum(w_sorted)
         id_cred=cumsum_weights<=level
-        x_range_temp=self.x[id_sorted][id_cred]
-        x_range=np.reshape(x_range_temp,[len(x_range_temp),len(self.x[0])])
+        if(id_cred.all()==False):
+            x_range=self.x[id_sorted[0]]
+        else:
+            x_range_temp=self.x[id_sorted][id_cred]
+            x_range=np.reshape(x_range_temp,[len(x_range_temp),len(self.x[0])])
         return x_range
     
-    def Show_region(self,level):
+    def Region_edge(self,level,param):
         x_region=self.Estimate_credible_region(level)
         print(x_region.shape)
         for i,p in enumerate(self.ParamH):
-            if self.ParamH[p]==1:
+            if self.ParamH[p]==1 and p==param:
                 temp=[]
                 index=[]
                 for j in range(x_region.shape[0]):
                     index.append(j)
                     temp.append(x_region[j][i])
                 print("%s:"%p,min(temp),max(temp))
+                return min(temp), max(temp)
         
     def Show_result(self):
         wi=np.linspace(1,self.n_particles(),self.n_particles())
