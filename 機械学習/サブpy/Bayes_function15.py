@@ -35,7 +35,6 @@ class Bayes_Function(Q_H):
         self.approx_ratio=0.98 #不要なパーティクルを削除する際の残す割合
         self.bayes_threshold=1 #推定を終えるベイズリスクの閾値
         self.mode=1 #Expsimの測定モード(1:確率,0:射影測定)
-        self.state=0 #0:ms=0で射影測定,1:ms=±1で射影測定
         self.flag1=False #パーティクルの数が変化したらTrue
         self.flag2=False #実験設計の数が変化したらTrue
         self.exp_flag="rabi"
@@ -73,7 +72,7 @@ class Bayes_Function(Q_H):
     def params(self):
         self.params_list=["a1","b1","a2","b2","w_theta","D0","AN","QN","Bz"]
         self.x0_dict={"a1":self.a1,"b1":self.b1,"a2":self.a2,"b2":self.b2,"w_theta":self.w_theta
-                 ,"D0":self.D0,"AN":self.AN,"QN":self.QN,"Bz":self.Be+self.Bo} #真のハミルトニアン
+                 ,"D0":self.D0,"AN":self.AN,"QN":self.QN,"Bz":self.Be+self.Bo-3} #真のハミルトニアン
         self.x0=[self.x0_dict["a1"],self.x0_dict["b1"],self.x0_dict["a2"],self.x0_dict["b2"],self.x0_dict["w_theta"]
                 ,self.x0_dict["D0"],self.x0_dict["AN"],self.x0_dict["QN"],self.x0_dict["Bz"]]
         self.D=np.empty([self.d,1])
@@ -323,21 +322,12 @@ class Bayes_Function(Q_H):
             self.Tevo(C[3]) #C[3]:MWwidth
             
         expect0=self.exp(self.rho) #ms=0で測定
-        if self.mode==0:
-            if rand()>=expect0:
-                mes=1 #ms=+1,-1
-            else:
-                mes=0 #ms=0
-        else:
-            if self.state==0:
-                mes=expect0
-                if mes>0:
-                    mes=1
-            else:
-                mes=1.0-expect0
-                if mes<0:
-                    mes=0
-        return mes
+        if expect0 > 1.0:
+            print("Probability Error")
+            print(expect0)
+            expect0=1
+        
+        return expect0
                     
     def Prob_Lookup(self):
         ptable_rabi=np.zeros([self.n_particles(),self.n_exp("rabi")])
