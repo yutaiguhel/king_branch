@@ -43,7 +43,7 @@ m.V1=1.5 #ワイヤ1の電圧
 m.t=2.0 #MWwidth
 m.tw=1.0 #wait time
 m.g=     {"V1":10,"V2":30,"phi":10,  "MWwidth":10, "MWfreq":10,"tw":10} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
-m.ParamC={"V1":1, "V2":0, "phi":0,  "MWwidth":1,  "MWfreq":0,"tw":1} #V1,V2,phi,MWwidth,MWfreq 変更する場合は1
+m.ParamC={"V1":1, "V2":0, "phi":0,  "MWwidth":1,  "MWfreq":0,"tw":0} #V1,V2,phi,MWwidth,MWfreq 変更する場合は1
 m.RangeC={"V1":2.9, "V2":1, "phi":2*np.pi,"MWwidth":3.98,"MWfreq":4,"tw":1.9} #実験設計パラメータの拡張範囲
 #============================推定パラメータの変更==================================
 m.a1=20
@@ -53,8 +53,8 @@ m.b2=0.95
 m.Bo=-1.26 #外部磁場[MHz] 地磁気を打ち消すならば-1.26MHz
 m.Ac_list=[]#[-3.265]
 #炭素数に応じてParamH,RangeHの数だけParamH,RangeHを増やす
-m.n=     {"a1":10, "b1":10, "a2":10,  "b2":10,  "w_theta":10,     "D0":10,"AN":5,"QN":0,"Bz":10} #推定基底毎のパーティクルの数 a1,b1,a2,b2,w_theta,D0,An,Qn,Bz *Ac
-m.ParamH={"a1":1,  "b1":1,  "a2":0,  "b2":0,  "w_theta":0,      "D0":0,"AN":0,"QN":0,"Bz":1} #a1,b1,a2,b2,w_theta,D0,AN,QN,外部磁場,*炭素 変更する場合は1
+m.n=     {"a1":5, "b1":5, "a2":10,  "b2":10,  "w_theta":10,     "D0":10,"AN":5,"QN":0,"Bz":10} #推定基底毎のパーティクルの数 a1,b1,a2,b2,w_theta,D0,An,Qn,Bz *Ac
+m.ParamH={"a1":1,  "b1":1,  "a2":0,  "b2":0,  "w_theta":0,      "D0":0,"AN":0,"QN":0,"Bz":0} #a1,b1,a2,b2,w_theta,D0,AN,QN,外部磁場,*炭素 変更する場合は1
 m.RangeH={"a1":30, "b1":1,  "a2":20,"b2":0.8,"w_theta":2*np.pi,"D0":3,"AN":0.05,"QN":0,"Bz":8} #推定パラメータの広げる範囲
 m.params() #パラメータの変更を反映
 #==============================重み、パーティクルの初期化============================
@@ -136,12 +136,13 @@ for i in range(m.ex):
     
     #==========================デバッグ用結果描画=================================
     
-    m.show_w() #重みの表示
-    m.show_U_rabi() #効用の表示
-    m.show_U_ramsey() #ラムゼー干渉の効用の表示
+    #m.show_w() #重みの表示
+    #m.show_U_rabi() #効用の表示
+    #m.show_U_ramsey() #ラムゼー干渉の効用の表示
     #m.show_exp()
     #m.show_r() #ベイズリスクの表示
-    
+    m.Show_result()
+    """
     a_list.append(xout[0][0])
     plt.plot(m.i_list,a_list)
     plt.title("a1",fontsize=24)
@@ -152,6 +153,7 @@ for i in range(m.ex):
     plt.title("b1",fontsize=24)
     plt.show()
     """
+    """
     fig=plt.figure()
     ax1=fig.add_subplot(211)
     ax2=fig.add_subplot(212)
@@ -160,6 +162,7 @@ for i in range(m.ex):
     ax1.set_title("a1",fontsize=24)
     ax2.set_title("b1",fontsize=24)
     fig.tight_layout()  # タイトルとラベルが被るのを解消  
+    """
     """
     a1_max=0
     a1_min=50
@@ -192,6 +195,7 @@ for i in range(m.ex):
     plt.ylabel("b1_region",fontsize=16)
     plt.title("b1_region",fontsize=20)
     plt.show()
+    """
     
     
     #m.Show_region(0.95)
