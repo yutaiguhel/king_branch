@@ -49,7 +49,7 @@ class Bayes_Function(Q_H):
         self.ptable=[]
         self.ptable_best=0
         self.risk=[]
-        self.exp_list=[0]
+        self.exp_list=[]
         #パーティクル
         self.w=0 #現在のパーティクルの重みs
         self.ParamH={"a1":0,"b1":0,"a2":0,"b2":0,"w_theta":0,"D0":1,"AN":0,"QN":0,"Bz":0} #変更するパーティクルのパラメータ
@@ -381,11 +381,13 @@ class Bayes_Function(Q_H):
         U_min=[np.min(self.U[0]),np.min(self.U[1])]
         if U_min[0] < U_min[1]:
             self.exp_flag="rabi"
+            self.exp_list.append(0)
             self.C_best_i=np.argmin(self.U[0])
             self.C_best=self.C[0][self.C_best_i]
             self.ptable_best=np.transpose(self.ptable[0],(1,0))[self.C_best_i]
         else:
             self.exp_flag="ramsey"
+            self.exp_list.append(1)
             self.C_best_i=np.argmin(self.U[1])
             self.C_best=self.C[1][self.C_best_i]
             self.ptable_best=np.transpose(self.ptable[1],(1,0))[self.C_best_i]
@@ -410,88 +412,70 @@ class Bayes_Function(Q_H):
         self.risk.append(np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))))
     
     #=============================結果を描画する関数=============================
+    def Estimate_credible_region(self,level):
+        id_sorted=np.argsort(self.w,axis=0)[::-1]
+        w_sorted=np.sort(self.w,axis=0)[::-1]
+        cumsum_weights=np.cumsum(w_sorted)
+        id_cred=cumsum_weights<=level
+        x_range_temp=self.x[id_sorted][id_cred]
+        x_range=np.reshape(x_range_temp,[len(x_range_temp),len(self.x[0])])
+        return x_range
+    
     def Show_region(self,level):
         x_region=self.Estimate_credible_region(level)
-        print(x_region)
+        print(x_region.shape)
         for i,p in enumerate(self.ParamH):
             if self.ParamH[p]==1:
                 temp=[]
                 index=[]
-                for j in range(self.x.shape[0]):
+                for j in range(x_region.shape[0]):
                     index.append(j)
                     temp.append(x_region[j][i])
                 print("%s:"%p,min(temp),max(temp))
-    
-    def show_w(self):
-        """
-        現在の重みを描画する関数
-        """
-        wi=np.linspace(1,self.n_particles(),self.n_particles())
-        plt.plot(wi,self.w)
-        plt.xlabel("particle")
-        plt.ylabel("weight (a.u.)")
-        plt.title("weight", fontsize=24)
-        plt.show()
-        
-    def show_U_rabi(self):
-        """
-        現在の効用を描画する関数
-        """
-        Ui=np.linspace(1,self.n_exp("rabi"),self.n_exp("rabi"))
-        plt.plot(Ui,self.U[0])
-        plt.xlabel("experiment")
-        plt.ylabel("Utility (a.u.)")
-        plt.title("Utility Rabi", fontsize=24)
-        plt.show()
-        
-    def show_U_ramsey(self):
-        """
-        現在の効用を描画する関数
-        """
-        Ui=np.linspace(1,self.n_exp("ramsey"),self.n_exp("ramsey"))
-        plt.plot(Ui,self.U[1])
-        plt.xlabel("experiment")
-        plt.ylabel("Utility (a.u.)")
-        plt.title("Utility Ramsey", fontsize=24)
-        plt.show()
-        
-    def show_r(self):
-        """
-        ベイズリスクの推移を描画する関数
-        """
-        plt.plot(self.i_list,self.risk)
-        plt.xlabel("experiment")
-        plt.ylabel("Bayes_risk ")
-        plt.yscale("log") #y軸をlogスケールに
-        plt.title("Bayes_risk", fontsize=24)
-        plt.show()
-        
-    def show_exp(self):
-        plt.plot(self.i_list,self.exp_list)
-        plt.xlabel("iteration#")
-        plt.ylabel("exp")
-        plt.title("Experiment", fontsize=24)
-        plt.show()
         
     def Show_result(self):
         wi=np.linspace(1,self.n_particles(),self.n_particles())
         Ui_rabi=np.linspace(1,self.n_exp("rabi"),self.n_exp("rabi"))
         Ui_ramsey=np.linspace(1,self.n_exp("ramsey"),self.n_exp("ramsey"))
-        fig1=plt.figure()
-        ax1=fig1.add_subplot(221)
-        ax2=fig1.add_subplot(222)
-        ax3=fig1.add_subplot(223)
-        ax4=fig1.add_subplot(224)
-        ax1.plot(wi,self.w)
-        ax2.plot(Ui_rabi,self.U[0])
-        ax3.plot(Ui_ramsey,self.U[1])
-        ax4.set_yscale("log")
-        ax4.plot(self.i_list,self.risk)
-        ax1.set_title("Weight",fontsize=16)
-        ax2.set_title("Utility_rabi",fontsize=16)
-        ax3.set_title("Utility_ramsey",fontsize=16)
-        ax4.set_title("Bayes_risk",fontsize=16)
-        fig1.tight_layout()  # タイトルとラベルが被るのを解消
+        plt.figure(figsize=(12,8))
+        
+        #重みの表示
+        plt.subplot(3,2,1)
+        plt.xlabel("iteration number",fontsize=20)
+        plt.ylabel("probability",fontsize=20)
+        plt.title("Weight",fontsize=20)
+        plt.plot(wi,self.w)
+        
+        #ラビ振動の効用を表示
+        plt.subplot(3,2,2)
+        plt.xlabel("iteration number",fontsize=20)
+        plt.ylabel("Utility [a.u.]",fontsize=20)
+        plt.title("Utility_rabi",fontsize=20)
+        plt.plot(Ui_rabi, self.U[0])
+        
+        #ラムゼー干渉の効用を表示
+        plt.subplot(3,2,3)
+        plt.xlabel("iteration number",fontsize=20)
+        plt.ylabel("Utility [a.u.]",fontsize=20)
+        plt.title("Utility_ramsey",fontsize=20)
+        plt.plot(Ui_ramsey, self.U[1])
+        
+        #ベイズリスクを表示
+        plt.subplot(3,2,4)
+        plt.xlabel("iteration number",fontsize=20)
+        plt.ylabel("Bayes_risk",fontsize=20)
+        plt.title("Bayes_risk after estimation",fontsize=20)
+        plt.plot(self.i_list, self.risk)
+        
+        #選ばれた実験を表示
+        plt.subplot(3,2,5)
+        plt.xlabel("iteration number",fontsize=20)
+        plt.ylabel("Experiment",fontsize=20)
+        plt.title("Experiment (0:rabi, 1:ramsey)",fontsize=20)
+        plt.plot(self.i_list, self.exp_list)
+        
+        plt.tight_layout()
+        plt.show()
         
     def show_hyper_parameter(self):
         """
