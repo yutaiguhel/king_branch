@@ -21,17 +21,13 @@ class Q_H:
     QN=-4.945  #核四重極子分裂[MHz]
     AN=-2.2 #電子スピン-窒素核スピン間超微細相互作用[MHz]
     h=6.62606957*1e-34/(2*pi) #ディラック定数[m**2*kg/s]
-    ge=2.002319 #電子スピンのg因子
-    mu=1.5e-7 #真空の透磁率[m**3*s**4*A**2/kg]
-    muB=927.401*1e-20/h #ボーア磁子[J/T]
-    muN=5.05078324*1e-27/h #核磁子[J/T]
-    Be=4.5*1e-5 #地磁気[T]
-    Bo=-0.450*1e-4 #外部磁場[T]
+    Be=1.26 #地磁気[MHz] 1.26
+    Bo=-1.26 #外部磁場[MHz] -1.26
     Ac_list=[-3.265,-0.5]#[-3.265] #電子スピン-炭素同位体核スピン1間超微細相互作用[MHz]
-    a1=500 #ワイヤ1のΩ-V変換式の係数1
-    b1=0.6 #ワイヤ1Ω-V変換式の係数2
-    a2=156 #ワイヤ2のΩ-V変換式の係数1
-    b2=0.8 #ワイヤ2Ω-V変換式の係数2
+    a1=20 #ワイヤ1のΩ-V変換式の係数1
+    b1=1.0 #ワイヤ1Ω-V変換式の係数2
+    a2=15 #ワイヤ2のΩ-V変換式の係数1
+    b2=1.2 #ワイヤ2Ω-V変換式の係数2
     w_theta=90*pi/180 #ワイヤ1とワイヤ2の角度[rad]
     
     def __init__(self):
@@ -74,17 +70,17 @@ class Q_H:
                 Hint_ec.append(x[9+i]*C_z)
                 C_list.append(2)
             He=x[5]*tensor(Sz*Sz,III,self.C_mat) #x[5]:D0
-            Hn=x[6]*tensor(III,Sz*Sz,self.C_mat) #x[6]:An
-            Hint_en=x[7]*tensor(Sz,Sz,self.C_mat) #x[7]:Qn
-            HB=Q_H.ge*(x[8])*Q_H.muB/10.0*tensor(Sz,III,self.C_mat) #x[8]:Bzs
+            Hn=x[7]*tensor(III,Sz*Sz,self.C_mat) #x[7]:Qn
+            Hint_en=x[6]*tensor(Sz,Sz,self.C_mat) #x[6]:An
+            HB=(x[8]+Q_H.Be+Q_H.Bo)*tensor(Sz,III,self.C_mat) #x[8]:Bzs
             self.H0=He+Hn+Hint_en+HB
             for i in range(len(Q_H.Ac_list)):
                 self.H0=self.H0+Hint_ec[i]
         else:
             He=x[5]*tensor(Sz*Sz,III)
-            Hn=x[6]*tensor(III,Sz*Sz)
-            Hint_en=x[7]*tensor(Sz,Sz)
-            HB=Q_H.ge*(x[8])*Q_H.muB/10.0*tensor(Sz,III)
+            Hn=x[7]*tensor(III,Sz*Sz)
+            Hint_en=x[6]*tensor(Sz,Sz)
+            HB=(x[8]+Q_H.Be+Q_H.Bo)*tensor(Sz,III) #x[8]:Bzs
             self.H0=He+Hn+Hint_en+HB
     
     def R_V_func(self,a,b,V):
