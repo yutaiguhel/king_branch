@@ -42,7 +42,7 @@ m.wire=1
 m.V1=1.5 #ワイヤ1の電圧
 m.t=2.0 #MWwidth
 m.tw=1.0 #wait time
-m.g=     {"V1":10,"V2":30,"phi":10,  "MWwidth":10, "MWfreq":10,"tw":10} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
+m.g=     {"V1":2,"V2":30,"phi":10,  "MWwidth":2, "MWfreq":10,"tw":10} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
 m.ParamC={"V1":1, "V2":0, "phi":0,  "MWwidth":1,  "MWfreq":0,"tw":0} #V1,V2,phi,MWwidth,MWfreq 変更する場合は1
 m.RangeC={"V1":2.9, "V2":1, "phi":2*np.pi,"MWwidth":3.98,"MWfreq":4,"tw":1.9} #実験設計パラメータの拡張範囲
 #============================推定パラメータの変更==================================
@@ -135,14 +135,9 @@ for i in range(m.ex):
     #実験設計を初期設定に戻す
     
     #==========================デバッグ用結果描画=================================
-    
-    #m.show_w() #重みの表示
-    #m.show_U_rabi() #効用の表示
-    #m.show_U_ramsey() #ラムゼー干渉の効用の表示
-    #m.show_exp()
-    #m.show_r() #ベイズリスクの表示
     m.Show_result()
-    """
+    m.Show_region(0.95)
+    
     a_list.append(xout[0][0])
     plt.plot(m.i_list,a_list)
     plt.title("a1",fontsize=24)
@@ -152,17 +147,7 @@ for i in range(m.ex):
     plt.plot(m.i_list,b_list)
     plt.title("b1",fontsize=24)
     plt.show()
-    """
-    """
-    fig=plt.figure()
-    ax1=fig.add_subplot(211)
-    ax2=fig.add_subplot(212)
-    ax1.plot(m.i_list,a_list)
-    ax2.plot(m.i_list,b_list)
-    ax1.set_title("a1",fontsize=24)
-    ax2.set_title("b1",fontsize=24)
-    fig.tight_layout()  # タイトルとラベルが被るのを解消  
-    """
+    
     """
     a1_max=0
     a1_min=50
