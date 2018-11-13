@@ -441,21 +441,21 @@ class Bayes_Function(Q_H):
         
         #重みの表示
         plt.subplot(3,2,1)
-        plt.xlabel("iteration number",fontsize=20)
+        plt.xlabel("Particle number",fontsize=20)
         plt.ylabel("probability",fontsize=20)
         plt.title("Weight",fontsize=20)
         plt.plot(wi,self.w)
         
         #ラビ振動の効用を表示
         plt.subplot(3,2,2)
-        plt.xlabel("iteration number",fontsize=20)
+        plt.xlabel("Rabi number",fontsize=20)
         plt.ylabel("Utility [a.u.]",fontsize=20)
         plt.title("Utility_rabi",fontsize=20)
         plt.plot(Ui_rabi, self.U[0])
         
         #ラムゼー干渉の効用を表示
         plt.subplot(3,2,3)
-        plt.xlabel("iteration number",fontsize=20)
+        plt.xlabel("Ramsey number",fontsize=20)
         plt.ylabel("Utility [a.u.]",fontsize=20)
         plt.title("Utility_ramsey",fontsize=20)
         plt.plot(Ui_ramsey, self.U[1])
