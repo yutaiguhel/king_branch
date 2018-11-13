@@ -31,7 +31,7 @@ m=Bayes_Function()
 #================================ベイズ推定の設定=================================
 m.ptable_mode="cross" #cross or all
 #===============================パラメータの変更===================================
-m.ex=500 #試行回数
+m.ex=1000 #試行回数
 m.d=1000 #推定に使う実験データの数
 m.a=0.98 #リサンプリング強度
 m.approx_ratio=0.99 #パーティクルを残す割合
@@ -42,7 +42,7 @@ m.wire=1
 m.V1=1.5 #ワイヤ1の電圧
 m.t=2.0 #MWwidth
 m.tw=1.0 #wait time
-m.g=     {"V1":2,"V2":30,"phi":10,  "MWwidth":2, "MWfreq":10,"tw":10} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
+m.g=     {"V1":5,"V2":30,"phi":10,  "MWwidth":5, "MWfreq":10,"tw":5} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
 m.ParamC={"V1":1, "V2":0, "phi":0,  "MWwidth":1,  "MWfreq":0,"tw":0} #V1,V2,phi,MWwidth,MWfreq 変更する場合は1
 m.RangeC={"V1":2.9, "V2":1, "phi":2*np.pi,"MWwidth":3.98,"MWfreq":4,"tw":1.9} #実験設計パラメータの拡張範囲
 #============================推定パラメータの変更==================================
@@ -138,14 +138,27 @@ for i in range(m.ex):
     m.Show_result()
     m.Show_region(0.95)
     
-    a_list.append(xout[0][0])
-    plt.plot(m.i_list,a_list)
-    plt.title("a1",fontsize=24)
-    plt.show()
+    plt.figure(figsize=(10,7))
     
+    a_list.append(xout[0][0])
+    plt.subplot(2,1,1)
+    plt.hlines(m.x0_dict["a1"],0,m.i_list[i],"r",label="True a1")
+    plt.xlabel("iteration number",fontsize=20)
+    plt.ylabel("a1",fontsize=20)
+    plt.plot(m.i_list,a_list,label="Infered a1")
+    plt.legend(loc="upper right")
+    plt.title("a1",fontsize=24)
+    
+    plt.subplot(2,1,2)
+    plt.hlines(m.x0_dict["b1"],0,m.i_list[i],"r",label="True b1")
+    plt.xlabel("iteration number",fontsize=20)
+    plt.ylabel("b1",fontsize=20)
     b_list.append(xout[0][1])
-    plt.plot(m.i_list,b_list)
+    plt.plot(m.i_list,b_list,label="Infered b1")
+    plt.legend(loc="upper right")
     plt.title("b1",fontsize=24)
+
+    plt.tight_layout()
     plt.show()
     
     """
