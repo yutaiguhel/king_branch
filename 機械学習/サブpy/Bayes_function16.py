@@ -38,6 +38,7 @@ class Bayes_Function(Q_H):
         self.flag1=False #パーティクルの数が変化したらTrue
         self.flag2=False #実験設計の数が変化したらTrue
         self.exp_flag="rabi"
+        self.exp_select="all" #"rabi", "ramsey", "all"
         self.Q=0 #ベイズリスクの重み行列
         self.U=0 #効用
         self.B_R=0 #ベイズリスク
@@ -157,7 +158,12 @@ class Bayes_Function(Q_H):
         """
         n_C_rabi=self.n_exp("rabi")
         n_C_ramsey=self.n_exp("ramsey")
-        self.U=[np.ones([n_C_rabi,1])/(n_C_rabi+n_C_ramsey),np.ones([n_C_ramsey,1])/(n_C_rabi+n_C_ramsey)]
+        if self.exp_select=="all":
+            self.U=[np.ones([n_C_rabi,1])/(n_C_rabi+n_C_ramsey),np.ones([n_C_ramsey,1])/(n_C_rabi+n_C_ramsey)]
+        elif self.exp_select=="rabi":
+            self.U=np.ones([n_C_rabi,1])/(n_C_rabi)
+        elif self.exp_select=="ramsey":
+            self.U=np.ones([n_C_ramsey,1])/(n_C_ramsey)
     
     def init_x(self):
         """
@@ -213,14 +219,14 @@ class Bayes_Function(Q_H):
         print ("resample")
         return w,x
     
-    def reapprox_par(self): #不要となったパーティクルを削除する関数
+    def reapprox(self,w,x,mode): #不要となったパーティクルを削除する関数
         """
         m:残すパーティクルの数
         ws:昇順に並び替えた重み
         wsの(m+1)番目の要素よりも大きい重みのパーティクルは残す
         """
-        n=len(self.w)
-        ws=sorted(self.w)
+        n=len(w)
+        ws=sorted(w)
         m=floor(n*(1.0-self.approx_ratio))
         if m<1:
             m=0
@@ -229,49 +235,28 @@ class Bayes_Function(Q_H):
         while j!=m:
             i=0
             for i in range(n):
-                if self.w[i]==ws[j] and n!=0:
+                if w[i]==ws[j] and n!=0:
                     delist.append(i)
                     j=j+1
                 if j==m:
                     break
-        self.w=np.delete(self.w,delist,0)
-        self.w=self.w/sum(self.w)
-        self.x=np.delete(self.x,delist,0)
-        if n != len(self.w):
-            self.flag1=True
-            print("reapprox_par")
-        else:
-            self.flag1=False
-    
-    def reapprox_exp(self): #不要となったパーティクルを削除する関数
-        """
-        m:残すパーティクルの数
-        ws:昇順に並び替えた重み
-        wsの(m+1)番目の要素よりも大きい重みのパーティクルは残す
-        """
-        for i in range(2):
-            n=len(self.U[i])
-            Us=sorted(self.U[i])
-            m=floor(n*(1.0-self.approx_ratio))
-            if m<1:
-                m=0
-            j=0
-            delist=[]
-            while j!=m:
-                for l in range(n):
-                    if self.U[i][l]==Us[j] and n!=0:
-                        delist.append(l)
-                        j=j+1
-                    if j==m:
-                        break
-            self.U[i]=np.delete(self.U[i],delist,0)
-            self.U[i]=self.U[i]/sum(self.U[i])
-            self.U[i]=np.delete(self.U[i],delist,0)
-            if n != len(self.U[i]):
+        w=np.delete(w,delist,0)
+        w=w/sum(w)
+        x=np.delete(x,delist,0)
+        if mode=="par":
+            if n != len(w):
+                self.flag1=True
+                print("reapprox_par")
+            else:
+                self.flag1=False
+        elif mode=="exp":
+            if n != len(w):
                 self.flag2=True
-                print("reapprox_exp"+str(i))
+                print("reapprox_exp")
             else:
                 self.flag2=False
+        return w,x
+            
     
     def Particlemaker(self,x,n,Param,Range): #パーティクルを生成する関数
         #itertools.product与えられた変数軍([x1,x2,x3],[y1,y2])の総重複なし組み合わせを配列として出力
@@ -290,6 +275,9 @@ class Bayes_Function(Q_H):
         return(np.array(list(itertools.product(*temp))))
     
     def Expmaker(self):
+        """
+        実験設計の組み合わせを作成する関数
+        """
         temp=[]
         temp_rabi=[]
         for i,p in enumerate(self.ParamC):
@@ -302,7 +290,12 @@ class Bayes_Function(Q_H):
                     temp_rabi.append(np.linspace(self.C[i]-self.RangeC[p]/2,self.C[i]+self.RangeC[p]/2,self.g[p]))
                 else:
                     temp_rabi.append([self.C[i]])
-        return([np.array(list(itertools.product(*temp_rabi))),np.array(list(itertools.product(*temp)))])
+        if self.exp_select=="all":
+            return([np.array(list(itertools.product(*temp_rabi))),np.array(list(itertools.product(*temp)))])
+        elif self.exp_select=="rabi":
+            return np.array(list(itertools.product(*temp_rabi)))
+        elif self.exp_select=="ramsey":
+            return np.array(list(itertools.product(*temp)))
     
     def Expsim(self,x,C): #実験と同様のシーケンスを行いデータの生成を行う関数
         """
@@ -332,38 +325,42 @@ class Bayes_Function(Q_H):
     def Prob_Lookup(self):
         ptable_rabi=np.zeros([self.n_particles(),self.n_exp("rabi")])
         ptable_ramsey=np.zeros([self.n_particles(),self.n_exp("ramsey")])
-        self.ptable=[ptable_rabi,ptable_ramsey]
-        self.exp_flag="rabi"
-        for i in range(2):
-            if i==1:
+        if self.exp_select=="all":
+            repeat=2
+            self.exp_flag="rabi"
+            self.ptable=[ptable_rabi,ptable_ramsey]
+        else:
+            repeat=1
+            self.exp_flag=self.exp_select
+            if self.exp_select=="rabi":
+                self.ptable=[ptable_rabi]
+            elif self.exp_select=="ramsey":
+                self.ptable=[ptable_ramsey]
+        for i in range(repeat):
+            if i==1 and repeat==2:
                 self.exp_flag="ramsey"
             for k in range(self.n_exp(self.exp_flag)):
                 for j in range(self.n_particles()):
                     self.ptable[i][j][k]=self.Expsim(self.x[j],self.C[i][k])
-                    
-    def Entropy(self,p):
-        """
-        p(確率が格納された配列)の各要素について平均情報量を計算する関数
-        """
-        if 0 in p:
-            p[p.index(0)]=0.00000000001
-        if 1 in p:
-            p[p.index(1)]=0.99999999999
-        return -p*np.log2(p)-(1-p)*np.log2(1-p)
 
-    def UtilIG(self):
-        """
-        各パーティクルについてエントロピーを計算する。
-        エントロピーをかけて効用の分布を更新する
-        """
-        ent_table = self.Entropy(self.ptable_C)#-self.ptable_C*np.log2(self.ptable_C) #エントロピーテーブル（各要素は各々の実験でのエントロピー)
-        ent_array = (np.reshape(ent_table,[len(ent_table),1])) #2D配列に変換
-        self.U=ent_array*self.U
+
+
+
+
+
+
+    def UtilIG_bayes_risk_one(self):
+        for k in range(self.n_exp(self.exp_flag)):
+                num=binomial(self.d,np.transpose(self.ptable[0],(1,0))[k])
+                num=self.Mean(self.w,num.reshape(num.shape[0],1))
+                L=binom.pmf(num,n=self.d,p=np.transpose(self.ptable[0],(1,0))[k]).reshape(np.transpose(self.ptable[0],(1,0))[k].shape[0],1)
+                w_new=L*self.w
+                x_infer=self.Mean(self.w,self.x)
+                x_infer_new=self.Mean(w_new,self.x)
+                self.U[k]=self.U[k]*np.trace(self.Q*np.dot((x_infer_new[0] - x_infer[0]).T,(x_infer_new[0] - x_infer[0])))
         self.U=self.U/np.sum(self.U)
-        self.C_best_i=np.argmax(self.U)
-        self.C_best=self.C[self.C_best_i]
-            
-    def UtilIG_bayes_risk(self):
+        
+    def UtilIG_bayes_risk_all(self):
         self.exp_flag="rabi"
         for i in range(2):
             if i==1:
