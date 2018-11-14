@@ -10,6 +10,7 @@ import itertools
 from scipy.stats import binom
 from numpy.random import*
 import matplotlib.pyplot as plt
+import multiprocessing
 """
 このクラスはベイズ推定のためのクラスです.
 クロスワイヤのドライブハミルトニアンを生成できます.
@@ -316,14 +317,42 @@ class Bayes_Function(Q_H):
             self.Tevo(C[3]) #C[3]:MWwidth
             self.Tevo_free(C[5]) #C[5]:wait
             self.Tevo(C[3]) #C[3]:MWwidth
-            
         expect0=self.exp(self.rho) #ms=0で測定
         if expect0 > 1.0:
             print("Probability Error")
             print(expect0)
             expect0=1
-        
         return expect0
+    
+    def wrapper_Expsim(tuple_data):
+    	return tuple_data[0](tuple_data[1],tuple_data[2])
+    
+    def Prob_Lookup_parallel(self):
+        if self.exp_select=="all":
+            p = multiprocessing.Pool(8)
+            #ラビ振動についてテーブル作成
+            self.exp_flag="rabi"
+            data_rabi = [(self.Expsim,self.x[i],self.C[0][j]) for i in range(self.x.shape[0]) for j in range(self.C[0].shape[0])]
+            ptable_rabi=p.map(self.wrapper_Expsim, data_rabi)
+            ptable_rabi=np.array(ptable_rabi).reshape(1,len(ptable_rabi)).reshape(self.n_particles(),self.n_exp("rabi")) #テーブルに変換
+            
+            #ラムゼー干渉についてテーブル作成
+            self.exp_flag="ramsey"
+            data_ramsey = [(self.Expsim,self.x[i],self.C[1][j]) for i in range(self.x.shape[0]) for j in range(self.C[1].shape[0])]
+            ptable_ramsey=p.map(self.wrapper_Expsim, data_ramsey)
+            ptable_ramsey=np.array(ptable_ramsey).reshape(1,len(ptable_ramsey)).reshape(self.n_particles(),self.n_exp("ramsey")) #テーブルに変換
+            
+            #各テーブルをまとめる
+            self.ptable=[ptable_rabi,ptable_ramsey]
+            
+        else:
+            p = multiprocessing.Pool(8)
+            data=[(self.Expsim,self.x[i],self.C[0][j]) for i in range(self.x.shape[0]) for j in range(self.C[0].shape[0])]
+            self.exp_flag=self.exp_select
+            print("start")
+            ptable_=p.map(self.wrapper_Expsim,data)
+            self.ptable=np.array(ptable_).reshape(1,len(ptable_)).reshape(self.n_particles(),self.n_exp(self.exp_select)) #テーブルに変換
+            print("end")
                     
     def Prob_Lookup(self):
         ptable_rabi=np.zeros([self.n_particles(),self.n_exp("rabi")])
@@ -344,7 +373,7 @@ class Bayes_Function(Q_H):
                 self.exp_flag="ramsey"
             for k in range(self.n_exp(self.exp_flag)):
                 for j in range(self.n_particles()):
-                    self.ptable[i][j][k]=self.Expsim(self.x[j],self.C[i][k])
+                    self.ptable[i][j][k]=self.Expsim_parallel(self.x[j],self.C[i][k])
 
     def UtilIG_bayes_risk_one(self):
         self.exp_flag=self.exp_select
@@ -420,12 +449,8 @@ class Bayes_Function(Q_H):
         cumsum_weights=np.cumsum(w_sorted)
         id_cred=cumsum_weights<=level
         if((id_cred==False).all()):
-<<<<<<< HEAD
             x_range_temp=self.x[id_sorted[0]]
             x_range=np.reshape(x_range_temp,[len(x_range_temp),len(self.x[0])])
-=======
-            x_range=self.x[id_sorted[0]]
->>>>>>> 9d3886ee2461a7393184428319bccc8e821750ad
         else:
             x_range_temp=self.x[id_sorted][id_cred]
             x_range=np.reshape(x_range_temp,[len(x_range_temp),len(self.x[0])])
