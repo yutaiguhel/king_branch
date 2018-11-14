@@ -87,8 +87,13 @@ for i in range(m.ex):
     
     #不要なパーティクルの削除
     if m.approx_ratio!=1 and i!=0: 
-        m.reapprox_par()
-        m.reapprox_exp()
+        m.w,m.x=m.reapprox(m.w,m.x,"par")
+        if m.exp_select=="all":
+            for j in range(2):
+                m.U[j],m.C[j]=m.reapprox(m.U[j],m.C[j],"exp")
+        else:
+            m.U,m.C=m.reapprox(m.U,m.C,"exp")
+        
     
     #パーティクルのリサンプリング
     if 1.0/sum(m.w*m.w)<len(m.w)*m.resample_threshold: #パーティクルの再配分
@@ -96,9 +101,13 @@ for i in range(m.ex):
         m.flag1=True
         
     #量子操作のリサンプリング
-    for j in range(2):
-        if 1.0/sum(m.U[j]*m.U[j])<len(m.U[j])*m.resample_threshold: #量子操作群の再配分
-            m.U[j],m.C[j]=m.resample(m.U[j],m.C[j])
+    if m.exp_select=="all":
+        for j in range(2):
+            if 1.0/sum(m.U[j]*m.U[j])<len(m.U[j])*m.resample_threshold: #量子操作群の再配分
+                m.U[j],m.C[j]=m.resample(m.U[j],m.C[j])
+    else:
+        if 1.0/sum(m.U*m.U)<len(m.U)*m.resample_threshold: #量子操作群の再配分
+                m.U,m.C=m.resample(m.U,m.C)
             m.flag2=True
     
     #確率のルックアップテーブルを作成.
