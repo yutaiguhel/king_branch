@@ -414,7 +414,7 @@ class Bayes_Function(Q_H):
         w_sorted=np.sort(self.w,axis=0)[::-1]
         cumsum_weights=np.cumsum(w_sorted)
         id_cred=cumsum_weights<=level
-        if(id_cred.all()==False):
+        if((id_cred==False).all()):
             x_range=self.x[id_sorted[0]]
         else:
             x_range_temp=self.x[id_sorted][id_cred]
