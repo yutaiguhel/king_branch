@@ -117,12 +117,15 @@ class Bayes_Function(Q_H):
                     return n_C
         
         else:
-            if exp=="ramsey":
-                n_C=len(self.U[1])
-            elif exp=="rabi":
-                n_C=len(self.U[0])
+            if self.exp_select=="all":
+                if exp=="ramsey":
+                    n_C=len(self.U[1])
+                elif exp=="rabi":
+                    n_C=len(self.U[0])
+                else:
+                    n_C=len(self.U[0])+len(self.U[1])
             else:
-                n_C=len(self.U[0])+len(self.U[1])
+                n_C=len(self.U)
             return n_C
         
     def Mean(self,w,x): #重み付き平均を計算する関数
@@ -293,9 +296,9 @@ class Bayes_Function(Q_H):
         if self.exp_select=="all":
             return([np.array(list(itertools.product(*temp_rabi))),np.array(list(itertools.product(*temp)))])
         elif self.exp_select=="rabi":
-            return np.array(list(itertools.product(*temp_rabi)))
+            return [np.array(list(itertools.product(*temp_rabi)))]
         elif self.exp_select=="ramsey":
-            return np.array(list(itertools.product(*temp)))
+            return [np.array(list(itertools.product(*temp)))]
     
     def Expsim(self,x,C): #実験と同様のシーケンスを行いデータの生成を行う関数
         """
@@ -343,22 +346,24 @@ class Bayes_Function(Q_H):
                 for j in range(self.n_particles()):
                     self.ptable[i][j][k]=self.Expsim(self.x[j],self.C[i][k])
 
-
-
-
-
-
-
     def UtilIG_bayes_risk_one(self):
+        self.exp_flag=self.exp_select
         for k in range(self.n_exp(self.exp_flag)):
-                num=binomial(self.d,np.transpose(self.ptable[0],(1,0))[k])
-                num=self.Mean(self.w,num.reshape(num.shape[0],1))
-                L=binom.pmf(num,n=self.d,p=np.transpose(self.ptable[0],(1,0))[k]).reshape(np.transpose(self.ptable[0],(1,0))[k].shape[0],1)
-                w_new=L*self.w
-                x_infer=self.Mean(self.w,self.x)
-                x_infer_new=self.Mean(w_new,self.x)
-                self.U[k]=self.U[k]*np.trace(self.Q*np.dot((x_infer_new[0] - x_infer[0]).T,(x_infer_new[0] - x_infer[0])))
+            num=binomial(self.d,np.transpose(self.ptable[0],(1,0))[k])
+            num=self.Mean(self.w,num.reshape(num.shape[0],1))
+            L=binom.pmf(num,n=self.d,p=np.transpose(self.ptable[0],(1,0))[k]).reshape(np.transpose(self.ptable[0],(1,0))[k].shape[0],1)
+            w_new=L*self.w
+            x_infer=self.Mean(self.w,self.x)
+            x_infer_new=self.Mean(w_new,self.x)
+            self.U[k]=self.U[k]*np.trace(self.Q*np.dot((x_infer_new[0] - x_infer[0]).T,(x_infer_new[0] - x_infer[0])))
         self.U=self.U/np.sum(self.U)
+        if self.exp_select=="rabi":
+            self.exp_list.append(0)
+        else:
+            self.exp_list.append(1)
+        self.C_best_i=np.argmin(self.U)
+        self.C_best=self.C[0][self.C_best_i]
+        self.ptable_best=np.transpose(self.ptable[0],(1,0))[self.C_best_i]
         
     def UtilIG_bayes_risk_all(self):
         self.exp_flag="rabi"
@@ -414,8 +419,9 @@ class Bayes_Function(Q_H):
         w_sorted=np.sort(self.w,axis=0)[::-1]
         cumsum_weights=np.cumsum(w_sorted)
         id_cred=cumsum_weights<=level
-        if(id_cred.all()==False):
-            x_range=self.x[id_sorted[0]]
+        if((id_cred==False).all()):
+            x_range_temp=self.x[id_sorted[0]]
+            x_range=np.reshape(x_range_temp,[len(x_range_temp),len(self.x[0])])
         else:
             x_range_temp=self.x[id_sorted][id_cred]
             x_range=np.reshape(x_range_temp,[len(x_range_temp),len(self.x[0])])
@@ -448,18 +454,26 @@ class Bayes_Function(Q_H):
         plt.plot(wi,self.w)
         
         #ラビ振動の効用を表示
-        plt.subplot(3,2,2)
-        plt.xlabel("Rabi number",fontsize=20)
-        plt.ylabel("Utility [a.u.]",fontsize=20)
-        plt.title("Utility_rabi",fontsize=20)
-        plt.plot(Ui_rabi, self.U[0])
+        if self.exp_select != "ramsey":
+            plt.subplot(3,2,2)
+            plt.xlabel("Rabi number",fontsize=20)
+            plt.ylabel("Utility [a.u.]",fontsize=20)
+            plt.title("Utility_rabi",fontsize=20)
+            if self.exp_select=="all":
+                plt.plot(Ui_rabi, self.U[0])
+            else:
+                plt.plot(Ui_rabi, self.U)
         
         #ラムゼー干渉の効用を表示
-        plt.subplot(3,2,3)
-        plt.xlabel("Ramsey number",fontsize=20)
-        plt.ylabel("Utility [a.u.]",fontsize=20)
-        plt.title("Utility_ramsey",fontsize=20)
-        plt.plot(Ui_ramsey, self.U[1])
+        if self.exp_select != "rabi": 
+            plt.subplot(3,2,3)
+            plt.xlabel("Ramsey number",fontsize=20)
+            plt.ylabel("Utility [a.u.]",fontsize=20)
+            plt.title("Utility_ramsey",fontsize=20)
+            if self.exp_select=="all":
+                plt.plot(Ui_ramsey, self.U[1])
+            else:
+                plt.plot(Ui_ramsey, self.U)
         
         #ベイズリスクを表示
         plt.subplot(3,2,4)
