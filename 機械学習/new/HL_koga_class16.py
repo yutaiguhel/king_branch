@@ -28,8 +28,6 @@ start=time.asctime()
 print("start:",start)
 #===============================インスタンス生成===================================
 m=Bayes_Function()
-#================================ベイズ推定の設定=================================
-m.ptable_mode="cross" #cross or all
 #===============================パラメータの変更===================================
 m.ex=1000 #試行回数
 m.d=1000 #推定に使う実験データの数
@@ -38,7 +36,7 @@ m.approx_ratio=0.99 #パーティクルを残す割合
 m.resampling_threshold=0.2 #リサンプリング閾値
 m.bayes_threshold=10
 m.wire=1
-m.exp_select="all" #rabi, ramsey, all
+m.exp_select="rabi" #rabi, ramsey, all
 #============================実験パラメータの変更==================================
 m.V1=1.5 #ワイヤ1の電圧
 m.t=2.0 #MWwidth
@@ -114,12 +112,15 @@ for i in range(m.ex):
     #確率のルックアップテーブルを作成.
     flag=m.flag1|m.flag2
     if flag==True or i==0:
-        m.Prob_Lookup() #ptableを用意する
+        m.Prob_Lookup_parallel() #ptableを用意する
         
           
     #効用の計算
-    #m.UtilIG_bayes_risk_one() #一つの実験しか行わない場合
-    m.UtilIG_bayes_risk_all() #複数の実験行う場合
+    if m.exp_select=="all":
+        m.UtilIG_bayes_risk_all() #複数の実験行う場合
+    else:
+        m.UtilIG_bayes_risk_one() #一つの実験しか行わない場合
+    
     
     """
     t_list.append(m.C_best[3])
