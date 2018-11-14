@@ -11,7 +11,7 @@ Created on Tue Nov 13 12:01:15 2018
         cumsum_weights=np.cumsum(w_sorted)
         id_cred=cumsum_weights<=level
         print(id_cred)
-        if((id_cred==True).all()):
+        if((id_cred==False).all()):
             x_range_temp=self.x[id_sorted[0]]
             x_range=np.reshape(x_range_temp,[len(x_range_temp),len(self.x[0])])
         else:
