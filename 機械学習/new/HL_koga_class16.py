@@ -38,6 +38,7 @@ m.approx_ratio=0.99 #パーティクルを残す割合
 m.resampling_threshold=0.2 #リサンプリング閾値
 m.bayes_threshold=10
 m.wire=1
+m.exp_select="all" #rabi, ramsey, all
 #============================実験パラメータの変更==================================
 m.V1=1.5 #ワイヤ1の電圧
 m.t=2.0 #MWwidth
@@ -107,7 +108,7 @@ for i in range(m.ex):
                 m.U[j],m.C[j]=m.resample(m.U[j],m.C[j])
     else:
         if 1.0/sum(m.U*m.U)<len(m.U)*m.resample_threshold: #量子操作群の再配分
-                m.U,m.C=m.resample(m.U,m.C)
+            m.U,m.C=m.resample(m.U,m.C)
             m.flag2=True
     
     #確率のルックアップテーブルを作成.
@@ -117,8 +118,8 @@ for i in range(m.ex):
         
           
     #効用の計算
-    #m.UtilIG() #効用を平均情報量とする場合
-    m.UtilIG_bayes_risk() #効用をベイズリスクとする場合
+    #m.UtilIG_bayes_risk_one() #一つの実験しか行わない場合
+    m.UtilIG_bayes_risk_all() #複数の実験行う場合
     
     """
     t_list.append(m.C_best[3])
