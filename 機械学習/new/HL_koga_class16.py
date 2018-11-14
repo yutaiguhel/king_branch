@@ -112,7 +112,7 @@ for i in range(m.ex):
     #確率のルックアップテーブルを作成.
     flag=m.flag1|m.flag2
     if flag==True or i==0:
-        m.Prob_Lookup_parallel() #ptableを用意する
+        m.Prob_Lookup() #ptableを用意する
         
           
     #効用の計算
