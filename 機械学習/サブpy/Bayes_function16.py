@@ -17,6 +17,11 @@ import multiprocessing
 効用はベイズリスク、エントロピーが選べます。
 確率のルックアップテーブルは十字に計算するか、全て計算するか選ぶことが出来ます。
 """
+
+def wrapper_as_class(arg, **kwarg):
+        # メソッドfをクラスメソッドとして呼び出す関数
+        return Bayes_Function.wrapper_Expsim(*arg, **kwarg)
+    
 class Bayes_Function(Q_H):
     """
     ベイズ推定のメソッドをまとめたクラス
@@ -46,16 +51,23 @@ class Bayes_Function(Q_H):
         self.Utility="binomial"
         self.ptable_mode="all" #all or cross
         self.p_exp=0 #真値におけるms=0にいた確率
+        
         #結果格納配列
         self.i_list=[]
         self.ptable=[]
         self.ptable_best=0
         self.risk=[]
         self.exp_list=[]
+        
+        #信用区間
+        self.xout_in_region_max={"a1":[],"b1":[],"a2":[],"b2":[],"w_theta":[],"D0":[],"AN":[],"QN":[],"Bz":[]}
+        self.xout_in_region_min={"a1":[],"b1":[],"a2":[],"b2":[],"w_theta":[],"D0":[],"AN":[],"QN":[],"Bz":[]}
+        
         #パーティクル
         self.w=0 #現在のパーティクルの重みs
         self.ParamH={"a1":0,"b1":0,"a2":0,"b2":0,"w_theta":0,"D0":1,"AN":0,"QN":0,"Bz":0} #変更するパーティクルのパラメータ
         self.RangeH={"a1":5,"b1":3,"a2":10,"b2":5,"w_theta":2*np.pi,"D0":10,"AN":0,"QN":0,"Bz":0} #変更する範囲
+        
         #実験設計
         self.V1=1 #ワイヤ1の電圧[V]
         self.V2=1 #ワイヤ2の電圧[V]
@@ -67,6 +79,7 @@ class Bayes_Function(Q_H):
         self.RangeC={"V1":1,"V2":1,"phi":360,"MWwidth":0.05,"MWfreq":10,"tw":0.5} #変更する範囲
         self.C_best=0
         self.C_best_i=0
+        
         #GRAPE
         self.omega_j=[] #GRAPEの結果を格納する配列
         self.U_grape=[] #GRAPEの真値に対する時間発展演算子
@@ -323,33 +336,6 @@ class Bayes_Function(Q_H):
             print(expect0)
             expect0=1
         return expect0
-    
-    def wrapper_Expsim(tuple_data):
-    	return tuple_data[0](tuple_data[1],tuple_data[2])
-    
-    def Prob_Lookup_parallel(self):
-        p = multiprocessing.Pool(8)
-        if self.exp_select=="all":
-            #ラビ振動についてテーブル作成
-            self.exp_flag="rabi"
-            data_rabi = [(self.Expsim,self.x[i],self.C[0][j]) for i in range(self.x.shape[0]) for j in range(self.C[0].shape[0])]
-            ptable_rabi=p.map(self.wrapper_Expsim, data_rabi)
-            ptable_rabi=np.array(ptable_rabi).reshape(1,len(ptable_rabi)).reshape(self.n_particles(),self.n_exp("rabi")) #テーブルに変換
-            
-            #ラムゼー干渉についてテーブル作成
-            self.exp_flag="ramsey"
-            data_ramsey = [(self.Expsim,self.x[i],self.C[1][j]) for i in range(self.x.shape[0]) for j in range(self.C[1].shape[0])]
-            ptable_ramsey=p.map(self.wrapper_Expsim, data_ramsey)
-            ptable_ramsey=np.array(ptable_ramsey).reshape(1,len(ptable_ramsey)).reshape(self.n_particles(),self.n_exp("ramsey")) #テーブルに変換
-            
-            #各テーブルをまとめる
-            self.ptable=[ptable_rabi,ptable_ramsey]
-        
-        else:
-            data=[(self.Expsim,self.x[i],self.C[0][j]) for i in range(self.x.shape[0]) for j in range(self.C[0].shape[0])]
-            self.exp_flag=self.exp_select
-            self.ptable=p.map(self.wrapper_Expsim,data)
-            self.ptable=np.array(self.ptable).reshape(1,len(self.ptable)).reshape(self.n_particles(),self.n_exp(self.exp_select)) #テーブルに変換
                     
     def Prob_Lookup(self):
         ptable_rabi=np.zeros([self.n_particles(),self.n_exp("rabi")])
@@ -365,6 +351,8 @@ class Bayes_Function(Q_H):
                 self.ptable=[ptable_rabi]
             elif self.exp_select=="ramsey":
                 self.ptable=[ptable_ramsey]
+                
+        #テーブル作成
         for i in range(repeat):
             if i==1 and repeat==2:
                 self.exp_flag="ramsey"
@@ -446,25 +434,38 @@ class Bayes_Function(Q_H):
         cumsum_weights=np.cumsum(w_sorted)
         id_cred=cumsum_weights<=level
         if((id_cred==False).all()):
-            x_range_temp=self.x[id_sorted[0]]
-            x_range=np.reshape(x_range_temp,[len(x_range_temp),len(self.x[0])])
+            x_range=self.x[id_sorted[0]]
         else:
             x_range_temp=self.x[id_sorted][id_cred]
             x_range=np.reshape(x_range_temp,[len(x_range_temp),len(self.x[0])])
         return x_range
     
     def Region_edge(self,level,param):
+        """
+        各推定における信用区間に含まれるパーティクルの最大もしくは最小値のarrayを得る関数
+        paramで推定パラメーターを指定
+        """
         x_region=self.Estimate_credible_region(level)
-        print(x_region.shape)
         for i,p in enumerate(self.ParamH):
             if self.ParamH[p]==1 and p==param:
                 temp=[]
-                index=[]
                 for j in range(x_region.shape[0]):
-                    index.append(j)
                     temp.append(x_region[j][i])
-                print("%s:"%p,min(temp),max(temp))
-                return min(temp), max(temp)
+                self.xout_in_region_max[p].append(max(temp))
+                self.xout_in_region_min[p].append(min(temp))
+                
+    def Region_edge_output(self,param,flag):
+        """
+        flagで戻り値が最大か最小かを指定(1:max,0:min)
+        """
+        for i,p in enumerate(self.ParamH):
+            if self.ParamH[p]==1 and p==param:
+                if flag==1:
+                    #print("xout_in_region_max",self.xout_in_region_max) #debug用
+                    return self.xout_in_region_max[p]
+                else:
+                    #print("xout_in_region_min",self.xout_in_region_min) #debug用
+                    return self.xout_in_region_min[p]
         
     def Show_result(self):
         wi=np.linspace(1,self.n_particles(),self.n_particles())
@@ -542,3 +543,34 @@ class Bayes_Function(Q_H):
         print(self.ParamC)
         print(self.RangeC)
         print("現在のパーティクルの数:%d" %(self.n_particles()))
+        
+class Bayes_parallel(Bayes_Function):
+    def __init__(self):
+        Bayes_Function.__init__(self)
+        
+    def wrapper_Expsim(self,tuple_data):
+        return tuple_data[0](tuple_data[1],tuple_data[2])
+    
+    def Prob_Lookup_parallel(self):
+        p = multiprocessing.Pool()
+        if self.exp_select=="all":
+            #ラビ振動についてテーブル作成
+            self.exp_flag="rabi"
+            data_rabi = [(self.Expsim,self.x[i],self.C[0][j]) for i in range(self.x.shape[0]) for j in range(self.C[0].shape[0])]
+            ptable_rabi=p.map(self.wrapper_Expsim, data_rabi)
+            ptable_rabi=np.array(ptable_rabi).reshape(1,len(ptable_rabi)).reshape(self.n_particles(),self.n_exp("rabi")) #テーブルに変換
+            
+            #ラムゼー干渉についてテーブル作成
+            self.exp_flag="ramsey"
+            data_ramsey = [(self.Expsim,self.x[i],self.C[1][j]) for i in range(self.x.shape[0]) for j in range(self.C[1].shape[0])]
+            ptable_ramsey=p.map(self.wrapper_Expsim, data_ramsey)
+            ptable_ramsey=np.array(ptable_ramsey).reshape(1,len(ptable_ramsey)).reshape(self.n_particles(),self.n_exp("ramsey")) #テーブルに変換
+            
+            #各テーブルをまとめる
+            self.ptable=[ptable_rabi,ptable_ramsey]
+        
+        else:
+            data=[(self.Expsim,self.x[i],self.C[0][j]) for i in range(self.x.shape[0]) for j in range(self.C[0].shape[0])]
+            self.exp_flag=self.exp_select
+            self.ptable=p.map(self.wrapper_Expsim,data)
+            self.ptable=[np.array(self.ptable).reshape(1,len(self.ptable)).reshape(self.n_particles(),self.n_exp(self.exp_select))] #テーブルに変換
