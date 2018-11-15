@@ -41,7 +41,7 @@ m.exp_select="rabi" #rabi, ramsey, all
 m.V1=1.5 #ワイヤ1の電圧
 m.t=2.0 #MWwidth
 m.tw=1.0 #wait time
-m.g=     {"V1":5,"V2":30,"phi":10,  "MWwidth":5, "MWfreq":10,"tw":5} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
+m.g=     {"V1":10,"V2":30,"phi":10,  "MWwidth":10, "MWfreq":10,"tw":5} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
 m.ParamC={"V1":1, "V2":0, "phi":0,  "MWwidth":1,  "MWfreq":0,"tw":0} #V1,V2,phi,MWwidth,MWfreq 変更する場合は1
 m.RangeC={"V1":2.9, "V2":1, "phi":2*np.pi,"MWwidth":3.98,"MWfreq":4,"tw":1.9} #実験設計パラメータの拡張範囲
 #============================推定パラメータの変更==================================
@@ -52,7 +52,7 @@ m.b2=0.95
 m.Bo=-1.26 #外部磁場[MHz] 地磁気を打ち消すならば-1.26MHz
 m.Ac_list=[]#[-3.265]
 #炭素数に応じてParamH,RangeHの数だけParamH,RangeHを増やす
-m.n=     {"a1":5, "b1":5, "a2":10,  "b2":10,  "w_theta":10,     "D0":10,"AN":5,"QN":0,"Bz":10} #推定基底毎のパーティクルの数 a1,b1,a2,b2,w_theta,D0,An,Qn,Bz *Ac
+m.n=     {"a1":10, "b1":10, "a2":10,  "b2":10,  "w_theta":10,     "D0":10,"AN":5,"QN":0,"Bz":10} #推定基底毎のパーティクルの数 a1,b1,a2,b2,w_theta,D0,An,Qn,Bz *Ac
 m.ParamH={"a1":1,  "b1":1,  "a2":0,  "b2":0,  "w_theta":0,      "D0":0,"AN":0,"QN":0,"Bz":0} #a1,b1,a2,b2,w_theta,D0,AN,QN,外部磁場,*炭素 変更する場合は1
 m.RangeH={"a1":30, "b1":1,  "a2":20,"b2":0.8,"w_theta":2*np.pi,"D0":3,"AN":0.05,"QN":0,"Bz":8} #推定パラメータの広げる範囲
 m.params() #パラメータの変更を反映
@@ -91,7 +91,7 @@ for i in range(m.ex):
             for j in range(2):
                 m.U[j],m.C[j]=m.reapprox(m.U[j],m.C[j],"exp")
         else:
-            m.U,m.C=m.reapprox(m.U,m.C,"exp")
+            m.U,m.C[0]=m.reapprox(m.U,m.C[0],"exp")
         
     
     #パーティクルのリサンプリング
@@ -109,11 +109,14 @@ for i in range(m.ex):
             m.U,m.C=m.resample(m.U,m.C)
             m.flag2=True
     
-    #確率のルックアップテーブルを作成.
+    #確率のルックアップテーブルを作成
     flag=m.flag1|m.flag2
     if flag==True or i==0:
-        m.Prob_Lookup() #ptableを用意する
-        
+        m.Prob_Lookup()
+        """
+        if __name__=="__main__":
+            m.Prob_Lookup() #ptableを用意する
+        """
           
     #効用の計算
     if m.exp_select=="all":
