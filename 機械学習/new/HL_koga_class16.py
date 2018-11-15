@@ -17,17 +17,20 @@ Created on Thu Sep 27 14:01:39 2018
 import sys
 #sys.path.append("C:/Users/yuta/.ipython/profile_default/GRAPE/new")
 sys.path.append("C:/koga/実験系/king_branch/機械学習/サブpy")
+sys.path.append("C:/Users/yuta/.ipython/profile_default")
 sys.dont_write_bytecode = True #__pycache__の生成を防ぐ
 from Q_H07 import*
 #from Q_module_grape_qutip_koga02 import*
 from Bayes_function16 import*
 import numpy as np
+from test_expsim02 import*
 #from mpl_toolkits.mplot3d import Axes3D
 #==============================プログラム起動時刻の記録=============================
 start=time.asctime()
 print("start:",start)
 #===============================インスタンス生成===================================
-m=Bayes_Function()
+m=Bayes_parallel()
+#m=Expsim()
 #===============================パラメータの変更===================================
 m.ex=1000 #試行回数
 m.d=1000 #推定に使う実験データの数
@@ -79,120 +82,108 @@ time.sleep(0.1)
 #===============================実験シミュレーション開始=============================
 print(m.x_dict) #始めのパーティクルの中心を表示
 tim0=time.time()
-for i in range(m.ex):
-    print("experiment#", i)
-    m.i=i
-    (m.i_list).append(i)
-    
-    #不要なパーティクルの削除
-    if m.approx_ratio!=1 and i!=0: 
-        m.w,m.x=m.reapprox(m.w,m.x,"par")
+if __name__=="__main__":
+    for i in range(m.ex):
+        print("experiment#", i)
+        m.i=i
+        (m.i_list).append(i)
+        
+        #不要なパーティクルの削除
+        if m.approx_ratio!=1 and i!=0: 
+            m.w,m.x=m.reapprox(m.w,m.x,"par")
+            if m.exp_select=="all":
+                for j in range(2):
+                    m.U[j],m.C[j]=m.reapprox(m.U[j],m.C[j],"exp")
+            else:
+                m.U,m.C[0]=m.reapprox(m.U,m.C[0],"exp")
+            
+        
+        #パーティクルのリサンプリング
+        if 1.0/sum(m.w*m.w)<len(m.w)*m.resample_threshold: #パーティクルの再配分
+            m.w,m.x=m.resample(m.w,m.x)
+            m.flag1=True
+            
+        #量子操作のリサンプリング
         if m.exp_select=="all":
             for j in range(2):
-                m.U[j],m.C[j]=m.reapprox(m.U[j],m.C[j],"exp")
+                if 1.0/sum(m.U[j]*m.U[j])<len(m.U[j])*m.resample_threshold: #量子操作群の再配分
+                    m.U[j],m.C[j]=m.resample(m.U[j],m.C[j])
         else:
-            m.U,m.C[0]=m.reapprox(m.U,m.C[0],"exp")
+            if 1.0/sum(m.U*m.U)<len(m.U)*m.resample_threshold: #量子操作群の再配分
+                m.U,m.C=m.resample(m.U,m.C)
+                m.flag2=True
         
+        #確率のルックアップテーブルを作成
+        #m.Prob_Lookup()
     
-    #パーティクルのリサンプリング
-    if 1.0/sum(m.w*m.w)<len(m.w)*m.resample_threshold: #パーティクルの再配分
-        m.w,m.x=m.resample(m.w,m.x)
-        m.flag1=True
-        
-    #量子操作のリサンプリング
-    if m.exp_select=="all":
-        for j in range(2):
-            if 1.0/sum(m.U[j]*m.U[j])<len(m.U[j])*m.resample_threshold: #量子操作群の再配分
-                m.U[j],m.C[j]=m.resample(m.U[j],m.C[j])
-    else:
-        if 1.0/sum(m.U*m.U)<len(m.U)*m.resample_threshold: #量子操作群の再配分
-            m.U,m.C=m.resample(m.U,m.C)
-            m.flag2=True
-    
-    #確率のルックアップテーブルを作成
-    flag=m.flag1|m.flag2
-    if flag==True or i==0:
-        m.Prob_Lookup()
-        """
-        if __name__=="__main__":
-            m.Prob_Lookup() #ptableを用意する
-        """
+        flag=m.flag1|m.flag2
+        if flag==True or i==0:
+            m.Prob_Lookup_parallel() #ptableを用意する
           
-    #効用の計算
-    if m.exp_select=="all":
-        m.UtilIG_bayes_risk_all() #複数の実験行う場合
-    else:
-        m.UtilIG_bayes_risk_one() #一つの実験しか行わない場合
-    
-    
-    """
-    t_list.append(m.C_best[3])
-    plt.plot(m.i_list,t_list)
-    plt.title("MWwidth",fontsize=24)
-    plt.show()
-    
-    V_list.append(m.C_best[0])
-    plt.plot(m.i_list,V_list)
-    plt.title("V1",fontsize=24)
-    plt.show()
-    """
-    #ベイズ推定
-    m.Update()#ベイズ推定
-    
-    #ベイズリスクの計算
-    m.Bayes_risk()
-    print("現在のベイズリスク",m.risk[i])
-
-    xout=m.Mean(m.w,m.x)
-    print("推定したハミルトニアン",xout[0]) #推定したハミルトニアンを出力
-    
-    #実験設計を初期設定に戻す
-    
-    #==========================デバッグ用結果描画=================================
-    m.Show_result()
-    
-    plt.figure(figsize=(10,7))
-    
-    a_list.append(xout[0][0])
-    pa=m.Region_edge(0.95,"a1")
-    a1_min_list.append(pa[0])
-    a1_max_list.append(pa[1])
-    plt.subplot(2,1,1)
-    plt.hlines(m.x0_dict["a1"],0,m.i_list[i],"r",label="True a1")
-    plt.xlabel("iteration number",fontsize=20)
-    plt.ylabel("a1",fontsize=20)
-    #plt.fill_between(m.i_list,a1_min_list,a1_max_list,facecolor='y',alpha=0.5)
-    plt.plot(m.i_list,a_list,label="Infered a1")
-    plt.legend(loc="upper right")
-    plt.title("a1",fontsize=24)
-    
-    plt.subplot(2,1,2)
-    plt.hlines(m.x0_dict["b1"],0,m.i_list[i],"r",label="True b1")
-    plt.xlabel("iteration number",fontsize=20)
-    plt.ylabel("b1",fontsize=20)
-    b_list.append(xout[0][1])
-    plt.plot(m.i_list,b_list,label="Infered b1")
-    plt.legend(loc="upper right")
-    plt.title("b1",fontsize=24)
-
-    plt.tight_layout()
-    plt.show()
-    
-    
-    #m.Show_region(0.95)
+        #効用の計算
+        if m.exp_select=="all":
+            m.UtilIG_bayes_risk_all() #複数の実験行う場合
+        else:
+            m.UtilIG_bayes_risk_one() #一つの実験しか行わない場合
         
-    #1推定にかかった時間
-    tim1=time.time()
-    print (tim1-tim0,"sec","\n")
-    tim0=tim1
-    #推定を続けるか判断する
-    if m.risk[i] < m.bayes_threshold:
-        print("=======================End of estimation======================")
-        break
+        #ベイズ推定
+        m.Update()#ベイズ推定
+        
+        #ベイズリスクの計算
+        m.Bayes_risk()
+        print("現在のベイズリスク",m.risk[i])
+    
+        xout=m.Mean(m.w,m.x)
+        print("推定したハミルトニアン",xout[0]) #推定したハミルトニアンを出力
+        
+        #実験設計を初期設定に戻す
+        
+        #==========================デバッグ用結果描画=================================
+        m.Show_result()
+        
+        plt.figure(figsize=(10,7))
+        
+        m.Region_edge(0.95,"a1")
+        a_list.append(xout[0][0])
+        plt.subplot(2,1,1)
+        plt.fill_between(m.i_list,m.Region_edge_output("a1",1),m.Region_edge_output("a1",0),color='lightgreen',alpha=0.3)
+        plt.hlines(m.x0_dict["a1"],0,m.i_list[i],"r",label="True a1")
+        plt.xlabel("iteration number",fontsize=20)
+        plt.ylabel("a1",fontsize=20)
+        #plt.fill_between(m.i_list,a1_min_list,a1_max_list,facecolor='y',alpha=0.5)
+        plt.plot(m.i_list,a_list,label="Infered a1")
+        plt.legend(loc="upper right")
+        plt.title("a1",fontsize=24)
+        
+        m.Region_edge(0.95,"b1")
+        plt.subplot(2,1,2)
+        plt.fill_between(m.i_list,m.Region_edge_output("b1",1),m.Region_edge_output("b1",0),color='lightgreen',alpha=0.3)
+        plt.hlines(m.x0_dict["b1"],0,m.i_list[i],"r",label="True b1")
+        plt.xlabel("iteration number",fontsize=20)
+        plt.ylabel("b1",fontsize=20)
+        b_list.append(xout[0][1])
+        plt.plot(m.i_list,b_list,label="Infered b1")
+        plt.legend(loc="upper right")
+        plt.title("b1",fontsize=24)
+    
+        plt.tight_layout()
+        plt.show()
+        
+        
+        #m.Show_region(0.95)
+            
+        #1推定にかかった時間
+        tim1=time.time()
+        print (tim1-tim0,"sec","\n")
+        tim0=tim1
+        #推定を続けるか判断する
+        if m.risk[i] < m.bayes_threshold:
+            print("=======================End of estimation======================")
+            break
 
 
-print("最も確からしいハミルトニアン",xout[0]) #最終的に最も確からしいと考えられたハミルトニアンを出力
-m.show_hyper_parameter()
-#===========================推定終了時刻を表示================================
-finish=time.asctime()
-print("finish:",finish)
+    print("最も確からしいハミルトニアン",xout[0]) #最終的に最も確からしいと考えられたハミルトニアンを出力
+    m.show_hyper_parameter()
+    #===========================推定終了時刻を表示================================
+    finish=time.asctime()
+    print("finish:",finish)
