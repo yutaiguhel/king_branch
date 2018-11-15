@@ -328,8 +328,8 @@ class Bayes_Function(Q_H):
     	return tuple_data[0](tuple_data[1],tuple_data[2])
     
     def Prob_Lookup_parallel(self):
+        p = multiprocessing.Pool(8)
         if self.exp_select=="all":
-            p = multiprocessing.Pool(8)
             #ラビ振動についてテーブル作成
             self.exp_flag="rabi"
             data_rabi = [(self.Expsim,self.x[i],self.C[0][j]) for i in range(self.x.shape[0]) for j in range(self.C[0].shape[0])]
@@ -344,15 +344,12 @@ class Bayes_Function(Q_H):
             
             #各テーブルをまとめる
             self.ptable=[ptable_rabi,ptable_ramsey]
-            
+        
         else:
-            p = multiprocessing.Pool(8)
             data=[(self.Expsim,self.x[i],self.C[0][j]) for i in range(self.x.shape[0]) for j in range(self.C[0].shape[0])]
             self.exp_flag=self.exp_select
-            print("start")
-            ptable_=p.map(self.wrapper_Expsim,data)
-            self.ptable=np.array(ptable_).reshape(1,len(ptable_)).reshape(self.n_particles(),self.n_exp(self.exp_select)) #テーブルに変換
-            print("end")
+            self.ptable=p.map(self.wrapper_Expsim,data)
+            self.ptable=np.array(self.ptable).reshape(1,len(self.ptable)).reshape(self.n_particles(),self.n_exp(self.exp_select)) #テーブルに変換
                     
     def Prob_Lookup(self):
         ptable_rabi=np.zeros([self.n_particles(),self.n_exp("rabi")])
@@ -373,7 +370,7 @@ class Bayes_Function(Q_H):
                 self.exp_flag="ramsey"
             for k in range(self.n_exp(self.exp_flag)):
                 for j in range(self.n_particles()):
-                    self.ptable[i][j][k]=self.Expsim_parallel(self.x[j],self.C[i][k])
+                    self.ptable[i][j][k]=self.Expsim(self.x[j],self.C[i][k])
 
     def UtilIG_bayes_risk_one(self):
         self.exp_flag=self.exp_select
