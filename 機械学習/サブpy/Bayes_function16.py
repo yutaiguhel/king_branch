@@ -5,6 +5,8 @@ Created on Fri Oct 26 21:08:39 2018
 @author: yuta
 """
 import time
+import os
+import datetime
 from Q_H07 import*
 import itertools
 from scipy.stats import binom
@@ -85,13 +87,15 @@ class Bayes_Function(Q_H):
         self.U_grape=[] #GRAPEの真値に対する時間発展演算子
         
     def params(self):
+        """
+        インスタンス変数に依存する変数を初期化
+        """
         self.params_list=["a1","b1","a2","b2","w_theta","D0","AN","QN","Bz"]
         self.x0_dict={"a1":self.a1,"b1":self.b1,"a2":self.a2,"b2":self.b2,"w_theta":self.w_theta
-                 ,"D0":self.D0,"AN":self.AN,"QN":self.QN,"Bz":self.Be+self.Bo-3} #真のハミルトニアン
+                 ,"D0":self.D0,"AN":self.AN,"QN":self.QN,"Bz":self.Be+self.Bo} #真のハミルトニアン
         self.x0=[self.x0_dict["a1"],self.x0_dict["b1"],self.x0_dict["a2"],self.x0_dict["b2"],self.x0_dict["w_theta"]
                 ,self.x0_dict["D0"],self.x0_dict["AN"],self.x0_dict["QN"],self.x0_dict["Bz"]]
-        self.D=np.empty([self.d,1])
-        self.x_dict={"a1":self.a1+float(np.random.random(1)*self.a1/4)-self.a1/8,"b1":self.b1+float(np.random.random(1)*self.b1/8)-self.b1/16,"a2":self.a2-self.a2/10,"b2":self.b2+self.b2/5,"w_theta":self.w_theta
+        self.x_dict={"a1":self.a1+self.a1/5,"b1":self.b1+self.b1/5,"a2":self.a2-self.a2/10,"b2":self.b2+self.b2/5,"w_theta":self.w_theta
                 ,"D0":self.D0,"AN":self.AN,"QN":self.QN,"Bz":self.Be+self.Bo} #現在のパーティクル
         self.x=[self.x_dict["a1"],self.x_dict["b1"],self.x_dict["a2"],self.x_dict["b2"],self.x_dict["w_theta"]
                 ,self.x_dict["D0"],self.x_dict["AN"],self.x_dict["QN"],self.x_dict["Bz"]]
@@ -129,7 +133,7 @@ class Bayes_Function(Q_H):
                     return int(n_C/self.g["tw"])
                 else:
                     return n_C
-        
+        #選択した実験設計の数を返す
         else:
             if self.exp_select=="all":
                 if exp=="ramsey":
@@ -148,12 +152,16 @@ class Bayes_Function(Q_H):
         x:パラメータ
         wで重みづけされたxの平均を返す
         """
+        
         i=0
         n=len(w)
         m=len(x[0])
         mu=np.zeros([1,m])
         for i in range(n):
             mu=mu+w[i][0]*x[i]
+        
+        #mu=w*x
+        
         return mu
         
     def init_C(self):
@@ -175,10 +183,16 @@ class Bayes_Function(Q_H):
         """
         n_C_rabi=self.n_exp("rabi")
         n_C_ramsey=self.n_exp("ramsey")
+        
+        #全実験設計を選択
         if self.exp_select=="all":
             self.U=[np.ones([n_C_rabi,1])/(n_C_rabi+n_C_ramsey),np.ones([n_C_ramsey,1])/(n_C_rabi+n_C_ramsey)]
+        
+        #ラビ振動のみ行う
         elif self.exp_select=="rabi":
             self.U=np.ones([n_C_rabi,1])/(n_C_rabi)
+            
+        #ラムゼー干渉のみ行う
         elif self.exp_select=="ramsey":
             self.U=np.ones([n_C_ramsey,1])/(n_C_ramsey)
     
@@ -543,6 +557,25 @@ class Bayes_Function(Q_H):
         print(self.ParamC)
         print(self.RangeC)
         print("現在のパーティクルの数:%d" %(self.n_particles()))
+    
+    def storage_data(self):
+        #ディレクトリの移動,作成
+        cd=os.getcwd()
+        now=datetime.datetime.now()
+        if self.i==0:
+            os.mkdir(cd+"\\"+'HL_{0:%Y%m%d}'.format(now)+"_ExpSelect_"+self.exp_select)
+        os.chdir(cd+"\\"+'HL_{0:%Y%m%d}'.format(now)+"_ExpSelect_"+self.exp_select)
+        
+        #共有テキストファイル作成
+        l=list(self.C_best)
+        if self.exp_flag=="rabi":
+            l.append(0)
+        else:
+            l.append(1)
+        np.savetxt("Property"+str(self.i)+".txt",l,newline="\r\n")
+
+        #ディレクトリを元に戻す
+        os.chdir("../")
         
 class Bayes_parallel(Bayes_Function):
     def __init__(self):
@@ -574,3 +607,5 @@ class Bayes_parallel(Bayes_Function):
             self.exp_flag=self.exp_select
             self.ptable=p.map(self.wrapper_Expsim,data)
             self.ptable=[np.array(self.ptable).reshape(1,len(self.ptable)).reshape(self.n_particles(),self.n_exp(self.exp_select))] #テーブルに変換
+        p.close()
+        p.terminate()
