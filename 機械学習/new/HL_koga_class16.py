@@ -25,9 +25,6 @@ from Bayes_function16 import*
 import numpy as np
 from test_expsim02 import*
 #from mpl_toolkits.mplot3d import Axes3D
-#==============================プログラム起動時刻の記録=============================
-start=time.asctime()
-print("start:",start)
 #===============================インスタンス生成===================================
 m=Bayes_parallel()
 #m=Expsim()
@@ -35,8 +32,8 @@ m=Bayes_parallel()
 m.ex=1000 #試行回数
 m.d=1000 #推定に使う実験データの数
 m.a=0.98 #リサンプリング強度
-m.approx_ratio=0.99 #パーティクルを残す割合
-m.resampling_threshold=0.2 #リサンプリング閾値
+m.approx_ratio=0.98 #パーティクルを残す割合
+m.resampling_threshold=0.5 #リサンプリング閾値
 m.bayes_threshold=10
 m.wire=1
 m.exp_select="rabi" #rabi, ramsey, all
@@ -44,7 +41,7 @@ m.exp_select="rabi" #rabi, ramsey, all
 m.V1=1.5 #ワイヤ1の電圧
 m.t=2.0 #MWwidth
 m.tw=1.0 #wait time
-m.g=     {"V1":10,"V2":30,"phi":10,  "MWwidth":10, "MWfreq":10,"tw":5} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
+m.g=     {"V1":5,"V2":30,"phi":10,  "MWwidth":5, "MWfreq":10,"tw":5} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
 m.ParamC={"V1":1, "V2":0, "phi":0,  "MWwidth":1,  "MWfreq":0,"tw":0} #V1,V2,phi,MWwidth,MWfreq 変更する場合は1
 m.RangeC={"V1":2.9, "V2":1, "phi":2*np.pi,"MWwidth":3.98,"MWfreq":4,"tw":1.9} #実験設計パラメータの拡張範囲
 #============================推定パラメータの変更==================================
@@ -55,10 +52,11 @@ m.b2=0.95
 m.Bo=-1.26 #外部磁場[MHz] 地磁気を打ち消すならば-1.26MHz
 m.Ac_list=[]#[-3.265]
 #炭素数に応じてParamH,RangeHの数だけParamH,RangeHを増やす
-m.n=     {"a1":10, "b1":10, "a2":10,  "b2":10,  "w_theta":10,     "D0":10,"AN":5,"QN":0,"Bz":10} #推定基底毎のパーティクルの数 a1,b1,a2,b2,w_theta,D0,An,Qn,Bz *Ac
+m.n=     {"a1":5,  "b1":5, "a2":10,  "b2":10,  "w_theta":10,     "D0":10,"AN":5,"QN":0,"Bz":10} #推定基底毎のパーティクルの数 a1,b1,a2,b2,w_theta,D0,An,Qn,Bz *Ac
 m.ParamH={"a1":1,  "b1":1,  "a2":0,  "b2":0,  "w_theta":0,      "D0":0,"AN":0,"QN":0,"Bz":0} #a1,b1,a2,b2,w_theta,D0,AN,QN,外部磁場,*炭素 変更する場合は1
 m.RangeH={"a1":30, "b1":1,  "a2":20,"b2":0.8,"w_theta":2*np.pi,"D0":3,"AN":0.05,"QN":0,"Bz":8} #推定パラメータの広げる範囲
 m.params() #パラメータの変更を反映
+#m.x0_dict["Bz"]=-3
 #==============================重み、パーティクルの初期化============================
 m.init_x0() #真のハミルトニアンに炭素追加
 m.init_x() #パーティクルに炭素追加
@@ -78,7 +76,6 @@ b1_min_list=[]
 m.x=m.Particlemaker(m.x,m.n,m.ParamH,m.RangeH)#パーティクルの作成
 m.weighting_matrix() #ベイズリスクを計算する際の重み行列を初期化, パーティクル生成後に呼び出す
 m.C=m.Expmaker() #実験候補の作成
-time.sleep(0.1)
 #===============================実験シミュレーション開始=============================
 print(m.x_dict) #始めのパーティクルの中心を表示
 tim0=time.time()
@@ -140,6 +137,7 @@ if __name__=="__main__":
         
         #==========================デバッグ用結果描画=================================
         m.Show_result()
+        m.storage_data()
         
         plt.figure(figsize=(10,7))
         
@@ -170,6 +168,8 @@ if __name__=="__main__":
         plt.show()
         
         
+        
+        
         #m.Show_region(0.95)
             
         #1推定にかかった時間
@@ -184,6 +184,3 @@ if __name__=="__main__":
 
     print("最も確からしいハミルトニアン",xout[0]) #最終的に最も確からしいと考えられたハミルトニアンを出力
     m.show_hyper_parameter()
-    #===========================推定終了時刻を表示================================
-    finish=time.asctime()
-    print("finish:",finish)
