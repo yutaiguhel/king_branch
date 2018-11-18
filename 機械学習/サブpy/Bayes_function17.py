@@ -54,6 +54,9 @@ class Bayes_Function(Q_H):
         self.Utility="binomial"
         self.ptable_mode="all" #all or cross
         self.p_exp=0 #真値におけるms=0にいた確率
+        self.dir_num=0 #作成したテキストファイルの番号
+        self.Data_num=0 #読み取ったテキストファイルの番号
+        self.Data=0 #実験データ 一個目:操作後の発光量、2つ目:ms=0の発光量
         
         #結果格納配列
         self.i_list=[]
@@ -429,7 +432,7 @@ class Bayes_Function(Q_H):
         """
         #ラビ振動とラムゼー干渉の実験を行う
         self.mode=1
-        self.p_exp=self.Expsim(self.x0,self.C_best)#真値におけるms0の確立
+        #self.p_exp=self.Expsim(self.x0,self.C_best)#真値におけるms0の確立
         num=binomial(self.d, self.p_exp)#実験をd回行いｍs=0であった回数
         temp=binom.pmf(num,n=self.d,p=self.ptable_best)#各パーティクルでの実験でms=0にいた確率
         self.w=self.w*temp.reshape([len(temp),1]) #重みの更新
@@ -562,10 +565,14 @@ class Bayes_Function(Q_H):
     def storage_data(self):
         #ディレクトリの移動,作成
         cd=os.getcwd()
-        now=datetime.datetime.now()
+        cd="\\\\UNICORN\\data&prog\\機械学習用テストフォルダ"
+        os.chdir(cd)
+        while self.i==0 and os.path.isdir(cd+"\\"+'HL_'+str(self.dir_num))==True:
+            self.dir_num=self.dir_num+1
+        print(self.dir_num)
         if self.i==0:
-            os.mkdir(cd+"\\"+'HL_{0:%Y%m%d}'.format(now)+"_ExpSelect_"+self.exp_select)
-        os.chdir(cd+"\\"+'HL_{0:%Y%m%d}'.format(now)+"_ExpSelect_"+self.exp_select)
+            os.mkdir(cd+"\\"+'HL_'+str(self.dir_num))
+        os.chdir(cd+"\\"+'HL_'+str(self.dir_num))
         
         #共有テキストファイル作成
         l=list(self.C_best)
@@ -573,10 +580,49 @@ class Bayes_Function(Q_H):
             l.append(0)
         else:
             l.append(1)
-        np.savetxt("Property"+str(self.i)+".txt",l,newline="\r\n")
+        np.savetxt("Setting"+str(self.i)+".csv",l,newline="\r\n",delimiter=",")
 
         #ディレクトリを元に戻す
         os.chdir("../")
+        
+    def Read_data(self):
+        #ディレクトリの移動,作成
+        cd=os.getcwd()
+        cd="\\\\UNICORN\\data&prog\\機械学習用テストフォルダ"+"\\"+"HL_"+str(self.dir_num)
+        os.chdir(cd)
+        A=False
+        while A==False:
+            A=os.path.exists(cd+"\\"+'Data'+str(self.Data_num)+".csv")
+            time.sleep(1)
+        
+        D=np.loadtxt("Data"+str(self.Data_num)+".csv",delimiter=",")
+        self.Data_num=self.Data_num+1
+        self.p_exp=D[0]/D[1]
+        print(self.p_exp)
+        
+        if self.p_exp > 1:
+            self.p_exp=0.99999999999999999
+
+        #ディレクトリを元に戻す
+        os.chdir("../")
+        
+    def END_file(self):
+        cd=os.getcwd()
+        cd="\\\\UNICORN\\data&prog\\機械学習用テストフォルダ"
+        os.chdir(cd)
+        dir_num_end=0
+        while self.i==0 and os.path.isdir(cd+"\\"+'HL_'+str(dir_num_end))==True:
+            dir_num_end=dir_num_end+1
+        print(dir_num_end)
+        os.chdir(cd+"\\"+'HL_'+str(self.dir_num))
+        
+        #共有テキストファイル作成
+        l=[1,2,3]
+        np.savetxt("END.txt",l)
+
+        #ディレクトリを元に戻す
+        os.chdir("../")
+        
         
 class Bayes_parallel(Bayes_Function):
     def __init__(self):
