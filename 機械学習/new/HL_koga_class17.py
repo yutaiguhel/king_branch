@@ -79,7 +79,7 @@ m.C=m.Expmaker() #実験候補の作成
 print(m.x_dict) #始めのパーティクルの中心を表示
 tim0=time.time()
 if __name__=="__main__":
-    for i in range(m.ex):
+    for i in range(1):
         print("experiment#", i)
         m.i=i
         (m.i_list).append(i)
@@ -121,6 +121,12 @@ if __name__=="__main__":
             m.UtilIG_bayes_risk_all() #複数の実験行う場合
         else:
             m.UtilIG_bayes_risk_one() #一つの実験しか行わない場合
+            
+        #共有するテキストデータを作成する
+        m.storage_data()
+        
+        #次のテキストデータが作成されるまで待機
+        m.Read_data()
         
         #ベイズ推定
         m.Update()#ベイズ推定
@@ -136,7 +142,7 @@ if __name__=="__main__":
         
         #==========================デバッグ用結果描画=================================
         m.Show_result()
-        m.storage_data()
+        
         
         plt.figure(figsize=(10,7))
         
@@ -166,67 +172,15 @@ if __name__=="__main__":
         plt.tight_layout()
         plt.show()
         
-        ##図のプロパティ
-        fs = (10,8) # 図の大きさ
-        row = 1 #　縦に並べる軸の個数
-        column = 1 # 横に並べる軸の個数
-        lw = 8 # 線幅
-        ls = '--' # 線のスタイル
-        c1 = '#7030a0' # 背景色
-        c2 = 'lightgray' # 等高線色
-        c3 = '#0070c0' # 線色
-        l1 = 'Retardance' # 第一のy軸の名前
-        tw = 2 # 目盛りの線幅
-        tl = 7 # 目盛りの長さ
-        fon = 24 # フォントの大きさ
-        fon2 =25 #タイトル　フォントの大きさ
-        div = 1000 # 色分割数
-        mini = 0.00061 # カラー最小値
-        maxi = 0.0145 # カラー最大値
-        cmap = plt.get_cmap('jet') # カラースタイル
-        levels = MaxNLocator(nbins=div).tick_values(mini, maxi) #カラースケール
-        high = np.linspace(0.000592,0.015) # 等高線レベル
-        Vpd=np.linspace(0,0.015,50)
-                
-        
-        ## 図，軸の生成 ##
-        fig3, ax31 = plt.subplots(row,column,figsize=fs) 
-        
-        # カラーマップ
-        ax31.patch.set_facecolor(c1) # 背景設定   
-        #C2=zeros((31,31))
-        #for num1 in array_t1:
-         #   for num2 in array_t1:
-          #      C2[num1][num2]=(1000*C[num1,num2])#VからmVへ変換
-        cs3 = ax31.contourf(array_t1, array_t1, C[:,:].transpose(), cmap=cmap, levels=levels) # カラーマップ描画
-        #ax31.plot([4,4], [1,180], ls=ls, label='Optimum pulse length', lw=lw, color=c3) # 線描画
-        ax31.set_xlabel("Receiver Retardance", fontsize=fon) # x軸の名前設定
-        ax31.set_ylabel("Sender Retardance",fontsize=fon) # ｙ軸の名前設定 
-        ax31.tick_params(width=tw, length=tl, labelsize=fon, direction='in') # 目盛りの線幅，長さ，値の大きさ設定
-        ax31.xaxis.set_ticks([0,np.pi/2,np.pi,3*np.pi/2,2*np.pi]) # 目盛りの位置設定
-        ax31.xaxis.set_ticklabels(['0','π/2','π','3π/2','2π']) # 目盛りの値設定
-        ax31.yaxis.set_ticks([0,np.pi/2,np.pi,3*np.pi/2,2*np.pi]) # 目盛りの位置設定
-        ax31.yaxis.set_ticklabels(['0','π/2','π','3π/2','2π']) # 目盛りの値設定
-        for axis in ['top','bottom','left','right']: # 枠の線幅設定
-            ax31.spines[axis].set_linewidth(tw)
-        ax31.set_title('Polarization Colormap',fontsize=fon2+5)
-        # 等高線
-        #c3 = ax31.contour(array_t1, array_t1, C[:,:], levels=high) # 等高線描画
-        #plt.clabel(c3, Vpd, inline=1, fmt='%1.5f',fontsize=20) # 目盛り設定
-        
-        # カラーバー
-        cb3 = plt.colorbar(cs3, ax=ax31, ticks=[0.00061,0.0072,0.0145]) # カラーバー描画 
-        cb3.ax.set_ylabel('PhotoDetecter Voltage(V)',fontsize=fon) # ｚ軸の名前設定
-        cb3.ax.tick_params(width=tw, length=tl, labelsize=fon) # 目盛りの線幅，長さ，値の大きさ設定
-        cb3.outline.set_linewidth(tw) # 枠の線幅設定
-        
-        # 凡例
-        #leg3 = ax31.legend(loc='lower left', fontsize=16) # 凡例生成
-        #leg3.get_frame().set_linewidth(tw) # 枠の線幅設定
-        
-        # 図の表示
-        fig3.show()
-        
+        #重みの二次元表示
+        # 散布図を表示
+        w_=m.w.reshape(m.w.shape[0],)
+        plt.xlim(0,50)
+        plt.ylim(0.5,1.5)
+        plt.scatter(m.x.T[0], m.x.T[1], s=10, c=w_, cmap='Blues')
+         
+        # カラーバーを表示
+        plt.colorbar()
         
         
         #m.Show_region(0.95)
@@ -237,9 +191,10 @@ if __name__=="__main__":
         tim0=tim1
         #推定を続けるか判断する
         if m.risk[i] < m.bayes_threshold:
+            #m.END_file()
             print("=======================End of estimation======================")
             break
 
-
+    m.END_file()
     print("最も確からしいハミルトニアン",xout[0]) #最終的に最も確からしいと考えられたハミルトニアンを出力
     m.show_hyper_parameter()
