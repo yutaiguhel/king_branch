@@ -39,7 +39,7 @@ class Bayes_Function(Q_H):
         self.i=0 #現在の試行回数
         self.n={"a1":5,"b1":5,"a2":5,"b2":5,"w_theta":5,"D0":5,"AN":5,"QN":5,"Bz":5} #推定基底毎のパーティクルの数 a1,b1,a2,b2,w_theta,D0,An,Qn,Bz
         self.g={"V1":5,"V2":5,"phi":30,"MWwidth":5,"MWfreq":5} #量子操作において変更するパラメータの分割数 V1,V2,phi,MWwidth,MWfreq
-        self.d=100 #一度の推定に使用する実験データの数
+        self.d=1000 #一度の推定に使用する実験データの数
         self.a=0.75 #パーティクルの再配分における移動強度
         self.resample_threshold=0.5 #パーティクルの再配分を行う判断をする閾値
         self.approx_ratio=0.98 #不要なパーティクルを削除する際の残す割合
@@ -71,7 +71,7 @@ class Bayes_Function(Q_H):
         self.xout_in_region_min={"a1":[],"b1":[],"a2":[],"b2":[],"w_theta":[],"D0":[],"AN":[],"QN":[],"Bz":[]}
         
         #パーティクル
-        self.w=0 #現在のパーティクルの重みs
+        self.w=0 #現在のパーティクルの重み
         self.ParamH={"a1":0,"b1":0,"a2":0,"b2":0,"w_theta":0,"D0":1,"AN":0,"QN":0,"Bz":0} #変更するパーティクルのパラメータ
         self.RangeH={"a1":5,"b1":3,"a2":10,"b2":5,"w_theta":2*np.pi,"D0":10,"AN":0,"QN":0,"Bz":0} #変更する範囲
         
@@ -84,8 +84,11 @@ class Bayes_Function(Q_H):
         self.MWf=2870 #MW周波数の中心[MHz]
         self.ParamC={"V1":0,"V2":0,"phi":1,"MWwidth":1,"MWfreq":1,"tw":1} #V1,V2,phi,MWwidth,MWfreq #変更する量子操作のパラメータ
         self.RangeC={"V1":1,"V2":1,"phi":360,"MWwidth":0.05,"MWfreq":10,"tw":0.5} #変更する範囲
-        self.C_best=0
-        self.C_best_i=0
+        self.Limit={"V1max":2.25,"V1min":0.001,"V2max":2.25,"V2min":0.001,"phimax":2*np.pi,"phimin":0,\
+                    "MWwidthmax":5,"MWwidthmin":0.01,\
+                    "MWfreqmax":2875,"MWfreqmin":2865,"twmax":5,"twmin":0} #実験パラメータの上限と下限s
+        self.C_best=0 #効用が最大の実験
+        self.C_best_i=0 #効用が最大の実験のインデックス
         
         #GRAPE
         self.omega_j=[] #GRAPEの結果を格納する配列
@@ -95,18 +98,44 @@ class Bayes_Function(Q_H):
         """
         インスタンス変数に依存する変数を初期化
         """
+        #ラビ振動パラメータリスト
+        self.params_rabi_list=["V1", "V2", "phi", "MWwidth", "MWfreq"]
+        
+        #パラメータリスト
         self.params_list=["a1","b1","a2","b2","w_theta","D0","AN","QN","Bz"]
+        
+        #真のハミルトニアン(辞書型)
         self.x0_dict={"a1":self.a1,"b1":self.b1,"a2":self.a2,"b2":self.b2,"w_theta":self.w_theta
-                 ,"D0":self.D0,"AN":self.AN,"QN":self.QN,"Bz":self.Be+self.Bo-2} #真のハミルトニアン
+                 ,"D0":self.D0,"AN":self.AN,"QN":self.QN,"Bz":self.Be+self.Bo-1} #真のハミルトニアン
+        
+        #真のハミルトニアン
         self.x0=[self.x0_dict["a1"],self.x0_dict["b1"],self.x0_dict["a2"],self.x0_dict["b2"],self.x0_dict["w_theta"]
                 ,self.x0_dict["D0"],self.x0_dict["AN"],self.x0_dict["QN"],self.x0_dict["Bz"]]
+        
+        #パーティクルの中心値(辞書型)
         self.x_dict={"a1":self.a1-self.a1/5,"b1":self.b1+self.b1/10,"a2":self.a2-self.a2/10,"b2":self.b2+self.b2/5,"w_theta":self.w_theta
                 ,"D0":self.D0,"AN":self.AN,"QN":self.QN,"Bz":self.Be+self.Bo} #現在のパーティクル
+        
+        #パーティクルの中心値
         self.x=[self.x_dict["a1"],self.x_dict["b1"],self.x_dict["a2"],self.x_dict["b2"],self.x_dict["w_theta"]
                 ,self.x_dict["D0"],self.x_dict["AN"],self.x_dict["QN"],self.x_dict["Bz"]]
         self.x_first=self.x_dict
         
-        
+    def Exp_limit(self,j):
+        #実験パラメータを範囲内に収める
+        for i,p in enumerate(self.params_rabi_list):
+            #実験パラメータが範囲外の実験設計のインデックスを取得
+            id_max=self.C[j].T[i] > self.Limit[p+"max"]
+            
+            #範囲外の実験パラメータを範囲内に収める
+            self.C[j].T[i][id_max]=self.Limit[p+"max"]
+            
+            #実験パラメータが範囲外の実験設計のインデックスを取得
+            id_min=self.C[j].T[i] < self.Limit[p+"min"]
+            
+            #範囲外の実験パラメータを範囲内に収める
+            self.C[j].T[i][id_min]=self.Limit[p+"min"]
+
     def n_particles(self):
         """
         パーティクルの数を返す
@@ -158,8 +187,9 @@ class Bayes_Function(Q_H):
         wで重みづけされたxの平均を返す
         """
         mu=w*x
-        mu=np.sum(mu,axis=0)
         
+        #パーティクル数方向に和を取る
+        mu=np.sum(mu,axis=0)
         return mu
         
     def init_C(self):
@@ -173,7 +203,7 @@ class Bayes_Function(Q_H):
         重みを一様分布に初期化
         """
         n_p=self.n_particles()
-        self.w=np.ones([n_p,1])
+        self.w=np.ones([n_p,1])/n_p
         
     def init_U(self):
         """
@@ -221,10 +251,11 @@ class Bayes_Function(Q_H):
         つまり、ベイズリスクを考慮する
         """
         self.Q=np.zeros([len(self.x0), len(self.x0)])
+        
+        #広げたパラメータのみ考慮する
         for i,p in enumerate(self.ParamH):
             if self.ParamH[p]==1:
                 px=1
-                #px=1/np.var(self.x.T[i]) #各パラメータの初期分散
             else:
                 px=0
             self.Q[i][i]=px
@@ -261,6 +292,8 @@ class Bayes_Function(Q_H):
             m=0
         j=0
         delist=[]
+        
+        #delistにm個たまるまで継続
         while j!=m:
             i=0
             for i in range(n):
@@ -269,9 +302,12 @@ class Bayes_Function(Q_H):
                     j=j+1
                 if j==m:
                     break
+        #重み、パーティクルから不要なパーティクルを削除
         w=np.delete(w,delist,0)
-        w=w/sum(w)
         x=np.delete(x,delist,0)
+        
+        w=w/sum(w)
+        
         if mode=="par":
             if n != len(w):
                 self.flag1=True
@@ -296,6 +332,8 @@ class Bayes_Function(Q_H):
         """
         N=len(x)
         temp=[]
+        
+        #ParamHが1のパーティクルのみ全幅RangeHで広げる
         for i,p in enumerate(Param):
             if(Param[p]==1):
                 temp.append(np.linspace(x[i]-Range[p]/2,x[i]+Range[p]/2,n[p]))
@@ -309,6 +347,8 @@ class Bayes_Function(Q_H):
         """
         temp=[]
         temp_rabi=[]
+        
+        #ParamCが1のパラメータのみ全幅RangeCで広げる
         for i,p in enumerate(self.ParamC):
             if(self.ParamC[p]==1):
                 temp.append(np.linspace(self.C[i]-self.RangeC[p]/2,self.C[i]+self.RangeC[p]/2,self.g[p]))
@@ -319,6 +359,7 @@ class Bayes_Function(Q_H):
                     temp_rabi.append(np.linspace(self.C[i]-self.RangeC[p]/2,self.C[i]+self.RangeC[p]/2,self.g[p]))
                 else:
                     temp_rabi.append([self.C[i]])
+    
         if self.exp_select=="all":
             return([np.array(list(itertools.product(*temp_rabi))),np.array(list(itertools.product(*temp)))])
         elif self.exp_select=="rabi":
@@ -330,18 +371,41 @@ class Bayes_Function(Q_H):
         """
         パーティクルxに実験Cで実験シミュレーションを行う関数
         """
-        self.rho_init() #量子状態の初期化
+        #量子状態の初期化
+        self.rho_init()
+        
+        #System Hamiltonian
         self.H_0(x)
+        
+        #ラビ振動の時間発展
         if self.exp_flag=="rabi":
+            #回転座標系に乗るためのハミルトニアン
             self.H_rot(C[4]) #C[4]:MW周波数
+            
+            #回転座標系に乗った時のドライブハミルトニアン
             self.Vdrive_all(x,C[0],C[1],C[2]) #C[0]:V1, C[1]:V2, C[2]:ワイヤ間の位相差phi
+            
+            #ドライブハミルトニアンで時間発展
             self.Tevo(C[3]) #C[3]:MWwidth
+            
+        #ラムゼー干渉の時間発展
         elif self.exp_flag=="ramsey":
+            #回転座標系に乗るためのハミルトニアン
             self.H_rot(C[4]) #C[4]:MW周波数
+            
+            #回転座標系に乗った時のドライブハミルトニアン
             self.Vdrive_all(x,C[0],C[1],C[2]) #C[0]:V1, C[1]:V2, C[2]:ワイヤ間の位相差phi
+            
+            #ドライブハミルトニアンで時間発展
             self.Tevo(C[3]) #C[3]:MWwidth
+            
+            #自由時間発展
             self.Tevo_free(C[5]) #C[5]:wait
+            
+            #ドライブハミルトニアンで時間発展
             self.Tevo(C[3]) #C[3]:MWwidth
+            
+        #ms=0で測定
         expect0=self.exp(self.rho) #ms=0で測定
         if expect0 > 1.0:
             print("Probability Error")
@@ -350,8 +414,13 @@ class Bayes_Function(Q_H):
         return expect0
                     
     def Prob_Lookup(self):
+        #ラビ振動のテーブルを作成
         ptable_rabi=np.zeros([self.n_particles(),self.n_exp("rabi")])
+        
+        #ラムゼー干渉のテーブルを作成
         ptable_ramsey=np.zeros([self.n_particles(),self.n_exp("ramsey")])
+        
+        #テーブル全体を作成
         if self.exp_select=="all":
             repeat=2
             self.exp_flag="rabi"
@@ -364,25 +433,63 @@ class Bayes_Function(Q_H):
             elif self.exp_select=="ramsey":
                 self.ptable=[ptable_ramsey]
                 
-        #テーブル作成
+        #テーブルを埋める
         for i in range(repeat):
             if i==1 and repeat==2:
                 self.exp_flag="ramsey"
             for k in range(self.n_exp(self.exp_flag)):
                 for j in range(self.n_particles()):
                     self.ptable[i][j][k]=self.Expsim(self.x[j],self.C[i][k])
+                    
+    def Exp_random(self):
+        """
+        実験をランダムに選ぶ関数
+        """
+        
+        if self.exp_select=="all":
+            i=np.round(np.random.random(1)[0])
+            if i==0:
+                self.exp_flag="rabi"
+                self.exp_list.append(0)
+            else:
+                self.exp_flag="ramsey"
+                self.exp_list.append(1)
+            self.C_best_i=int(np.round(self.n_exp(exp)*(np.random.random(1)[0])))
+            self.C_best=self.C[i][self.C_best_i]
+            
+        else:
+            self.exp_flag=self.exp_select
+            if self.exp_select=="rabi":
+                self.exp_list.append(0)
+            elif self.exp_select=="ramsey":
+                self.exp_list.append(1)
+            self.C_best_i=int(np.round(self.n_exp(self.exp_select)*(np.random.random(1)[0])))
+            self.C_best=self.C[0][self.C_best_i]
+            
+        #全パーティクルについてシミュレーション
+        self.ptable_best=np.zeros(self.n_particles(),)
+        for j in range(self.n_particles()):
+            self.ptable_best[j]=self.Expsim(self.x[j],self.C_best)
 
     def UtilIG_bayes_risk_one(self):
         self.exp_flag=self.exp_select
         for k in range(self.n_exp(self.exp_flag)):
-            num=np.round(self.d*np.transpose(self.ptable[0],(1,0))[k]).reshape(self.n_particles(),1)
-            num=self.Mean(self.w,num)
-            pjk=np.transpose(self.ptable[0],(1,0))[k].reshape(self.n_particles(),1)
+            #最もらしいms=0にいた回数
+            num=self.d*np.transpose(self.ptable[0],(1,0))[k].reshape(self.x.shape[0],1)
+            num=np.round(self.Mean(self.w,num))
+            
+            #実験設計Ckで実験したms=0の確率
+            pjk=np.transpose(self.ptable[0],(1,0))[k].reshape(self.x.shape[0],1)
+            
+            #尤度の算出、重みの更新
             L=binom.pmf(num,n=self.d,p=pjk)
             w_new=L*self.w
+            
+            #ベイズリスクの算出
             x_infer=self.Mean(self.w,self.x)
             x_infer_new=self.Mean(w_new,self.x)
             self.U[k]=self.U[k]*np.trace(self.Q*np.dot((x_infer_new - x_infer).T,(x_infer_new - x_infer)))
+        
         self.U=self.U/np.sum(self.U)
         if self.exp_select=="rabi":
             self.exp_list.append(0)
@@ -394,6 +501,7 @@ class Bayes_Function(Q_H):
         
     def UtilIG_bayes_risk_all(self):
         self.exp_flag="rabi"
+        
         #各実験操作について平均効用を計算
         for i in range(2):
             if i==1:
@@ -415,14 +523,27 @@ class Bayes_Function(Q_H):
                 """
                 
                 #事前分布からあり得る結果を求める
+                #結果を乱数にする場合
                 #num=binomial(self.d,np.transpose(self.ptable[i],(1,0))[k])
-                num=np.round(self.d*np.transpose(self.ptable[i],(1,0))[k]).reshape(self.n_particles(),1)
-                num=self.Mean(self.w,num)
-                pjk=np.transpose(self.ptable[i],(1,0))[k].reshape(self.n_particles(),1)
+                
+                #結果を乱数にしない場合
+                num=self.d*np.transpose(self.ptable[i],(1,0))[k].reshape(self.x.shape[0],1)
+                num=np.round(self.Mean(self.w,num))
+                
+                #ルックアップテーブルのある列を抜き出す
+                pjk=np.transpose(self.ptable[i],(1,0))[k].reshape(self.x.shape[0],1)
+                
+                #尤度を求める
                 L=binom.pmf(num,n=self.d,p=pjk)
+                
+                #重みを仮更新する
                 w_new=L*self.w
+                
+                #現在の推定値、仮の推定値を求める
                 x_infer=self.Mean(self.w,self.x)
                 x_infer_new=self.Mean(w_new,self.x)
+                
+                #k番目の実験設計のベイズリスクを計算する
                 self.U[i][k]=self.U[i][k]*np.trace(self.Q*np.dot((x_infer_new - x_infer).T,(x_infer_new - x_infer)))
                 
         #効用を規格化
@@ -448,27 +569,41 @@ class Bayes_Function(Q_H):
         """
         パーティクルの重みを更新する関数
         """
-        #ラビ振動とラムゼー干渉の実験を行う
+        #実験を行う
         self.mode=1
-        self.p_exp=self.Expsim(self.x0,self.C_best)#真値におけるms0の確立
-        #num=binomial(self.d, self.p_exp)#実験をd回行いｍs=0であった回数
+        self.p_exp=self.Expsim(self.x0,self.C_best)#真値におけるms0の確率
+        
+        #結果を乱数にする場合
+        #num=binomial(self.d, self.p_exp) #実験をd回行いｍs=0であった回数
+        
+        #結果を乱数にしない場合
         num=np.round(self.d*self.p_exp) #実験をd回行いｍs=0であった回数
+        
+        #尤度を計算
         temp=binom.pmf(num,n=self.d,p=self.ptable_best)#各パーティクルでの実験でms=0にいた確率
-        self.w=self.w*temp.reshape([len(temp),1]) #重みの更新
-        self.w=self.w/np.sum(self.w) #重みの規格化
+        temp=temp.reshape([len(temp),1])
+        
+        #重みの更新
+        self.w=temp*self.w 
+        
+        #重みの全要素が0だった場合の例外処理
+        if np.sum(self.w)==0:
+            self.w=np.ones([self.n_particles(),1])/self.n_particles()
+        else:
+            self.w=self.w/np.sum(self.w) #重みの規格化
     
     def Bayes_risk(self): #ベイズリスクを計算する関数
         """
         ベイズリスクを計算する関数
         """
+        #現在の推定値を計算
         x_infer=self.Mean(self.w,self.x) 
-        self.risk.append(np.trace(self.Q*np.dot((self.x - x_infer[0]).T,(self.x - x_infer[0]))))
+        self.risk.append(np.trace(self.Q*np.dot((self.x - x_infer).T,(self.x - x_infer))))
     
     #=============================結果を描画する関数=============================
     def generate_cmap(self,colors):
         """自分で定義したカラーマップを返す"""
         values = range(len(colors))
-    
         vmax = np.ceil(np.max(values))
         color_list = []
         for v, c in zip(values, colors):
@@ -476,15 +611,22 @@ class Bayes_Function(Q_H):
         return LinearSegmentedColormap.from_list('custom_cmap', color_list)
     
     def Estimate_credible_region(self,level):
+        #重みを降順に並べなおす
         id_sorted=np.argsort(self.w,axis=0)[::-1]
         w_sorted=np.sort(self.w,axis=0)[::-1]
+        
+        #累積確率を計算する
         cumsum_weights=np.cumsum(w_sorted)
         id_cred=cumsum_weights<=level
+        
+        #パーティクルが一つになった場合の例外処理
         if((id_cred==False).all()):
             x_range=self.x[id_sorted[0]]
         else:
             x_range_temp=self.x[id_sorted][id_cred]
             x_range=np.reshape(x_range_temp,[len(x_range_temp),len(self.x[0])])
+        
+        #信用区間内のパーティクルを戻り値
         return x_range
     
     def Region_edge(self,level,param):
@@ -515,6 +657,7 @@ class Bayes_Function(Q_H):
                     return self.xout_in_region_min[p]
         
     def Show_result(self):
+        #グラフのx軸を作成
         wi=np.linspace(1,self.n_particles(),self.n_particles())
         Ui_rabi=np.linspace(1,self.n_exp("rabi"),self.n_exp("rabi"))
         Ui_ramsey=np.linspace(1,self.n_exp("ramsey"),self.n_exp("ramsey"))
@@ -661,19 +804,22 @@ class Bayes_parallel(Bayes_Function):
         return tuple_data[0](tuple_data[1],tuple_data[2])
     
     def Prob_Lookup_parallel(self):
-        p = multiprocessing.Pool()
+        #プロセス作成
+        p = multiprocessing.Pool(4)
+        
+        #ルックアップテーブルを作成
         if self.exp_select=="all":
             #ラビ振動についてテーブル作成
             self.exp_flag="rabi"
             data_rabi = [(self.Expsim,self.x[i],self.C[0][j]) for i in range(self.x.shape[0]) for j in range(self.C[0].shape[0])]
             ptable_rabi=p.map(self.wrapper_Expsim, data_rabi)
-            ptable_rabi=np.array(ptable_rabi).reshape(1,len(ptable_rabi)).reshape(self.n_particles(),self.n_exp("rabi")) #テーブルに変換
+            ptable_rabi=np.array(ptable_rabi).reshape(1,len(ptable_rabi)).reshape(self.x.shape[0],self.n_exp("rabi")) #テーブルに変換
             
             #ラムゼー干渉についてテーブル作成
             self.exp_flag="ramsey"
             data_ramsey = [(self.Expsim,self.x[i],self.C[1][j]) for i in range(self.x.shape[0]) for j in range(self.C[1].shape[0])]
             ptable_ramsey=p.map(self.wrapper_Expsim, data_ramsey)
-            ptable_ramsey=np.array(ptable_ramsey).reshape(1,len(ptable_ramsey)).reshape(self.n_particles(),self.n_exp("ramsey")) #テーブルに変換
+            ptable_ramsey=np.array(ptable_ramsey).reshape(1,len(ptable_ramsey)).reshape(self.x.shape[0],self.n_exp("ramsey")) #テーブルに変換
             
             #各テーブルをまとめる
             self.ptable=[ptable_rabi,ptable_ramsey]
@@ -682,6 +828,10 @@ class Bayes_parallel(Bayes_Function):
             data=[(self.Expsim,self.x[i],self.C[0][j]) for i in range(self.x.shape[0]) for j in range(self.C[0].shape[0])]
             self.exp_flag=self.exp_select
             self.ptable=p.map(self.wrapper_Expsim,data)
-            self.ptable=[np.array(self.ptable).reshape(1,len(self.ptable)).reshape(self.n_particles(),self.n_exp(self.exp_select))] #テーブルに変換
+            self.ptable=[np.array(self.ptable).reshape(1,len(self.ptable)).reshape(self.x.shape[0],self.n_exp(self.exp_select))] #テーブルに変換
+        
+        #プロセスの停止
         p.close()
+        
+        #プロセスの終了
         p.terminate()
