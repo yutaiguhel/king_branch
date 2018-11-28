@@ -105,7 +105,7 @@ class Bayes_Function(Q_H):
         self.params_list=["a1","b1","a2","b2","w_theta","D0","AN","QN","Bz"]
         
         #真のハミルトニアン(辞書型)
-        self.x0_dict={"a1":self.a1,"b1":self.b1,"a2":self.a2,"b2":self.b2,"w_theta":self.w_theta
+        self.x0_dict={"a1":self.a1,"b1":self.b1,"a2":self.a2,"b2":self.b2,"w_theta":self.w_theta-np.pi/10
                  ,"D0":self.D0,"AN":self.AN,"QN":self.QN,"Bz":self.Be+self.Bo-1} #真のハミルトニアン
         
         #真のハミルトニアン
@@ -154,6 +154,7 @@ class Bayes_Function(Q_H):
         実験設計の数を返す
         """
         n_C=1
+        
         #全実験設計の数を返す
         if self.i==0:
             for c in self.g:
@@ -167,6 +168,7 @@ class Bayes_Function(Q_H):
                     return int(n_C/self.g["tw"])
                 else:
                     return n_C
+                
         #選択した実験設計の数を返す
         else:
             if self.exp_select=="all":
@@ -190,6 +192,7 @@ class Bayes_Function(Q_H):
         
         #パーティクル数方向に和を取る
         mu=np.sum(mu,axis=0)
+        
         return mu
         
     def init_C(self):
@@ -524,11 +527,11 @@ class Bayes_Function(Q_H):
                 
                 #事前分布からあり得る結果を求める
                 #結果を乱数にする場合
-                num=binomial(self.d,np.transpose(self.ptable[i],(1,0))[k])
+                #num=binomial(self.d,np.transpose(self.ptable[i],(1,0))[k])
                 
                 #結果を乱数にしない場合
-                #num=self.d*np.transpose(self.ptable[i],(1,0))[k].reshape(self.x.shape[0],1)
-                #num=np.round(self.Mean(self.w,num))
+                num=self.d*np.transpose(self.ptable[i],(1,0))[k].reshape(self.x.shape[0],1)
+                num=np.round(self.Mean(self.w,num))
                 
                 #ルックアップテーブルのある列を抜き出す
                 pjk=np.transpose(self.ptable[i],(1,0))[k].reshape(self.x.shape[0],1)
@@ -571,13 +574,13 @@ class Bayes_Function(Q_H):
         """
         #実験を行う
         self.mode=1
-        #self.p_exp=self.Expsim(self.x0,self.C_best)#真値におけるms0の確率
+        self.p_exp=self.Expsim(self.x0,self.C_best)#真値におけるms0の確率
         
         #結果を乱数にする場合
-        num=binomial(self.d, self.p_exp) #実験をd回行いｍs=0であった回数
+        #num=binomial(self.d, self.p_exp) #実験をd回行いｍs=0であった回数
         
         #結果を乱数にしない場合
-        #num=np.round(self.d*self.p_exp) #実験をd回行いｍs=0であった回数
+        num=np.round(self.d*self.p_exp) #実験をd回行いｍs=0であった回数
         
         #尤度を計算
         temp=binom.pmf(num,n=self.d,p=self.ptable_best)#各パーティクルでの実験でms=0にいた確率
@@ -741,7 +744,7 @@ class Bayes_Function(Q_H):
         os.chdir(cd)
         while self.i==0 and os.path.isdir(cd+"\\"+'HL_'+str(self.dir_num))==True:
             self.dir_num=self.dir_num+1
-        print("ファイル#: %d" %(self.dir_num))
+        print(self.dir_num)
         if self.i==0:
             os.mkdir(cd+"\\"+'HL_'+str(self.dir_num))
         os.chdir(cd+"\\"+'HL_'+str(self.dir_num))
@@ -752,14 +755,13 @@ class Bayes_Function(Q_H):
             l.append(0)
         else:
             l.append(1)
-        np.savetxt("Setting"+str(self.i)+".csv",l,newline="\n",delimiter=",")
+        np.savetxt("Setting"+str(self.i)+".csv",l,newline="\r\n",delimiter=",")
 
         #ディレクトリを元に戻す
         os.chdir("../")
         
     def Read_data(self):
         #ディレクトリの移動,作成
-        dip=0.7#室温実験の最下点
         cd=os.getcwd()
         cd="\\\\UNICORN\\data&prog\\機械学習用テストフォルダ"+"\\"+"HL_"+str(self.dir_num)
         os.chdir(cd)
@@ -770,14 +772,11 @@ class Bayes_Function(Q_H):
         
         D=np.loadtxt("Data"+str(self.Data_num)+".csv",delimiter=",")
         self.Data_num=self.Data_num+1
-        self.p_exp=((D[0]/D[1])-dip)/(1-dip)#確立の規格化をしてあげる
+        self.p_exp=D[0]/D[1]
         print(self.p_exp)
         
         if self.p_exp > 1:
             self.p_exp=0.99999999999999999
-            
-        if self.p_exp < 0:
-            self.p_exp=0.000000000000000001
 
         #ディレクトリを元に戻す
         os.chdir("../")
