@@ -260,7 +260,24 @@ class Grape_funcs_for_single_wire(Grape_funcs):
         CPO.dynamics.initialize_controls(self.pulse_shape)
         return CPO.run_optimization()
 
-    def calc_fid_err(self,params):
+    def calc_fid_err(self):
+        CPO = cpo.create_pulse_optimizer(2*pi*self.Hdrift,[2*pi*self.Hdrive1],self.Uinit,self.U_ideal,self.n_tslot,self.pulse_time,
+                                   dyn_type='UNIT',
+                                   dyn_params=None,
+                                   prop_type='DEF',
+                                   fid_type='DEF',
+                                   fid_params={'phase_option': 'PSU'},
+                                   pulse_scaling=1.0,
+                                   pulse_offset = 0.0,
+                                   log_level = 30,
+                                   gen_stats=False)
+        CPO.dynamics.initialize_controls(self.pulse_shape)
+        fid_err = CPO.dynamics.fid_computer.get_fid_err()  
+        self.Uarb = CPO.dynamics.fwd_evo
+        self.Uarb_last = CPO.dynamics.full_evo
+        return fid_err
+
+    def calc_fid_err_arb(self,params):
         D0,Q,AN,C_known,Bz,theta = params
         number_C_known = len(C_known)
         if number_C_known != 0:
@@ -289,12 +306,10 @@ class Grape_funcs_for_single_wire(Grape_funcs):
                                    log_level = 30,
                                    gen_stats=False)
         CPO.dynamics.initialize_controls(self.pulse_shape)
-        #result = CPO._create_result()
-        #CPO._add_common_result_attribs(result,0,1)
         fid_err = CPO.dynamics.fid_computer.get_fid_err()  
         self.Uarb = CPO.dynamics.fwd_evo
         self.Uarb_last = CPO.dynamics.full_evo
-        return CPO.dynamics.fid_computer.get_fid_err()  
+        return fid_err  
     
     def data_choice(self):
         self.Amp1_j = self.pulse_shape.reshape(self.n_tslot)
@@ -369,7 +384,24 @@ class Grape_funcs_for_cross_wire(Grape_funcs):
         CPO.dynamics.initialize_controls(self.pulse_shape)
         return CPO.run_optimization()
 
-    def calc_fid_err(self,params):
+    def calc_fid_err(self):
+        CPO = cpo.create_pulse_optimizer(2*pi*self.Hdrift,[2*pi*self.Hdrive1,2*pi*self.Hdrive2],self.Uinit,self.U_ideal,self.n_tslot,self.pulse_time,
+                                   dyn_type='UNIT',
+                                   dyn_params=None,
+                                   prop_type='DEF',
+                                   fid_type='DEF',
+                                   fid_params={'phase_option': 'PSU'},
+                                   pulse_scaling=1.0,
+                                   pulse_offset = 0.0,
+                                   log_level = 30,
+                                   gen_stats=False)
+        CPO.dynamics.initialize_controls(self.pulse_shape)
+        fid_err = CPO.dynamics.fid_computer.get_fid_err()
+        self.Uarb = CPO.dynamics.fwd_evo
+        self.Uarb_last = CPO.dynamics.full_evo
+        return fid_err       
+
+    def calc_fid_err_arb(self,params):
         D0,Q,AN,C_known,Bz,theta = params
         number_C_known = len(C_known)
         if number_C_known != 0:
@@ -400,11 +432,10 @@ class Grape_funcs_for_cross_wire(Grape_funcs):
                                    log_level = 30,
                                    gen_stats=False)
         CPO.dynamics.initialize_controls(self.pulse_shape)
-        #result = CPO._create_result()
-        #CPO._add_common_result_attribs(result,0,1)
+        fid_err = CPO.dynamics.fid_computer.get_fid_err()
         self.Uarb = CPO.dynamics.fwd_evo
         self.Uarb_last = CPO.dynamics.full_evo
-        return CPO.dynamics.fid_computer.get_fid_err()        
+        return fid_err       
     
     def data_choice(self):
         self.Amp1_j = self.pulse_shape.T[0]
