@@ -2,7 +2,7 @@
 """
 Created on Fri Oct 26 21:08:39 2018
 
-@author: okama
+@author: yuta
 """
 import time
 import os
