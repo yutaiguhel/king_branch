@@ -74,8 +74,7 @@ class Grape_funcs(Q_H):
         self.wire1_amp=[]
         self.wire2_amp=[]
         self.data=[]
-        self.d=1000
-        self.p_exp=0
+
     """
     Create and return a pulse generator object matching the given type.
     The pulse generators each produce a different type of pulse,
@@ -376,61 +375,7 @@ class Grape_funcs_for_single_wire(Grape_funcs):
         np.savetxt(cd+str(self.num_dir),self.data.T,newline="\n",delimiter=",")
         os.chdir("../")
         
-    def Expsim_GRAPE(self,x):
-        """
-        パーティクルxに実験シミュレーションを行う関数
-        """
-        #量子状態の初期化
-        self.rho_init()
-        
-        #System Hamiltonian
-        self.H_0(x)
 
-        CPO = cpo.create_pulse_optimizer(2*pi*self.H_0,[2*pi*self.Hdrive1],self.Uinit,self.U_ideal,self.n_tslot,self.pulse_time,
-                                   dyn_type='UNIT',
-                                   dyn_params=None,
-                                   prop_type='DEF',
-                                   fid_type='DEF',
-                                   fid_params={'phase_option': 'PSU'},
-                                   pulse_scaling=1.0,
-                                   pulse_offset = 0.0,
-                                   log_level = 30,
-                                   gen_stats=False)
-        CPO.dynamics.initialize_controls(self.pulse_shape)
-        fid_err = CPO.dynamics.fid_computer.get_fid_err()  
-        self.Uarb = CPO.dynamics.fwd_evo
-        self.Uarb_last = CPO.dynamics.full_evo
-        
-        self.rho=self.Uarb_last*self.rho_init()*self.Uarb_last.dag()
-        
-        #ms=0で測定
-        expect0=self.exp(self.rho) #ms=0で測定
-        if expect0 > 1.0:
-            print("Probability Error")
-            print(expect0)
-            expect0=1
-        return expect0
-    
-    def Update_GRAPE(self,x,w,n_particles):
-        """
-        パーティクルの重みを更新する関数
-        """
-        self.p_exp=self.Expsim_GRAPE(x)
-        #結果を乱数にする場合
-        num=binomial(self.d, self.p_exp) #実験をd回行いｍs=0であった回数
-        
-        #尤度を計算
-        temp=binom.pmf(num,n=self.d,p=self.ptable_best)#各パーティクルでの実験でms=0にいた確率
-        temp=temp.reshape([len(temp),1])
-
-        #重みの更新
-        w=temp*w 
-        
-        #重みの全要素が0だった場合の例外処理
-        if np.sum(w)==0:
-            w=np.ones([n_particles(),1])/n_particles()
-        else:
-            w=sw/np.sum(w) #重みの規格化      
             
 
 class Grape_funcs_for_cross_wire(Grape_funcs):   
@@ -545,41 +490,6 @@ class Grape_funcs_for_cross_wire(Grape_funcs):
             print("fid_err = "+str(result.fid_err))
             self.fid_err_list = self.fid_err_list+[result.fid_err]
             
-    def Expsim_GRAPE(self,x):
-        """
-        パーティクルxに実験シミュレーションを行う関数
-        """
-        #量子状態の初期化
-        self.rho_init()
-        
-        #System Hamiltonian
-        self.H_0(x)
-    
-        CPO = cpo.create_pulse_optimizer(2*pi*self.H_0,[2*pi*self.Hdrive1],self.Uinit,self.U_ideal,self.n_tslot,self.pulse_time,
-                                   dyn_type='UNIT',
-                                   dyn_params=None,
-                                   prop_type='DEF',
-                                   fid_type='DEF',
-                                   fid_params={'phase_option': 'PSU'},
-                                   pulse_scaling=1.0,
-                                   pulse_offset = 0.0,
-                                   log_level = 30,
-                                   gen_stats=False)
-        CPO.dynamics.initialize_controls(self.pulse_shape)
-        fid_err = CPO.dynamics.fid_computer.get_fid_err()  
-        self.Uarb = CPO.dynamics.fwd_evo
-        self.Uarb_last = CPO.dynamics.full_evo
-        
-        self.rho=self.Uarb_last*self.rho_init()*self.Uarb_last.dag()
-        
-        #ms=0で測定
-        expect0=self.exp(self.rho) #ms=0で測定
-        if expect0 > 1.0:
-            print("Probability Error")
-            print(expect0)
-            expect0=1
-        return expect0
-            
     def inverse_func_rabi_frequency(self,pulse_shape,a,b):
         self.wire1_shape=pulse_shape[:,0]#pulse_shapeの0番目の列を抽出
         self.wire2_shape=pulse_shape[:,1]#pulse_shapeの1番目の列を抽出
@@ -615,6 +525,201 @@ class Grape_funcs_for_cross_wire(Grape_funcs):
             os.mkdir(cd+str(self.num_dir))
         np.savetxt(cd+str(self.num_dir),self.data.T,newline="\n",delimiter=",")
         os.chdir("../")
-            
-            
+
+#GRAPEを使うハミルトニアンラーニングの部分のみクラス化する試み
+class GRAPE_Learning(Grape_funcs):
+    
+    def __init__(self):
+        Q_H.__init__(self)
+        self.ex=100 #試行回数
+        self.i=0 #現在の試行回数
+        self.n={"a1":5,"b1":5,"a2":5,"b2":5,"w_theta":5,"D0":5,"AN":5,"QN":5,"Bz":5} #推定基底毎のパーティクルの数 a1,b1,a2,b2,w_theta,D0,An,Qn,Bz
+        self.d=1000 #一度の推定に使用する実験データの数
+        self.a=0.75 #パーティクルの再配分における移動強度
+        self.resample_threshold=0.5 #パーティクルの再配分を行う判断をする閾値
+        self.approx_ratio=0.98 #不要なパーティクルを削除する際の残す割合
+        self.bayes_threshold=1 #推定を終えるベイズリスクの閾値
+        self.flag1=False #パーティクルの数が変化したらTrue
+        self.p_exp=0 #真値におけるms=0にいた確率
+        self.dir_num=0 #作成したテキストファイルの番号
+        self.Data_num=0 #読み取ったテキストファイルの番号
+        self.Data=0 #実験データ 一個目:操作後の発光量、2つ目:ms=0の発光量
+        #結果格納配列
+        self.i_list=[]
+        self.ptable=[]
+        #パーティクル
+        self.ParamH={"a1":0,"b1":0,"a2":0,"b2":0,"w_theta":0,"D0":1,"AN":0,"QN":0,"Bz":0} #変更するパーティクルのパラメータ
+        self.RangeH={"a1":5,"b1":3,"a2":10,"b2":5,"w_theta":2*np.pi,"D0":10,"AN":0,"QN":0,"Bz":0} #変更する範囲
+        #実験設計
+        self.V1=1 #ワイヤ1の電圧[V]
+        self.V2=1 #ワイヤ2の電圧[V]
+        self.phi=180*pi/180 #ワイヤ間の位相差[rad]
+
+    def Mean(self,w,x): #重み付き平均を計算する関数
+        """
+        w:重み
+        x:パラメータ
+        wで重みづけされたxの平均を返す
+        """
+        mu=w*x
         
+        #パーティクル数方向に和を取る
+        mu=np.sum(mu,axis=0)
+        return mu
+    
+    def weighting_matrix(self):
+        """
+        ベイズリスクの重み行列を作成
+        ParamHの要素が1ならば対応する重み行列の要素も1
+        つまり、ベイズリスクを考慮する
+        """
+        self.Q=np.zeros([len(self.x0), len(self.x0)])
+        
+        #広げたパラメータのみ考慮する
+        for i,p in enumerate(self.ParamH):
+            if self.ParamH[p]==1:
+                px=1
+            else:
+                px=0
+            self.Q[i][i]=px
+            
+    def resample(self,w,x): #パーティクルの移動と重みの再配分を行う関数
+        """
+        a:resample強度
+        各パーティクルをx=a*x+(1-a)*x_averageに移動させる
+        つまり、各パーティクルを強度aで分布の中心に寄せる
+        """
+        i=0
+        n=len(w)
+        m=len(x[0])
+        mu=self.Mean(w,x)
+        mui=np.zeros([1,m])
+        for i in range(n):
+            if w[i]<1.0/n*self.a:
+                mui=self.a*x[i]+(1-self.a)*mu
+                x[i]=mui
+            w[i][0]=1.0/n
+        print ("resample")
+        return w,x
+    
+    def reapprox(self,w,x,mode): #不要となったパーティクルを削除する関数
+        """
+        m:残すパーティクルの数
+        ws:昇順に並び替えた重み
+        wsの(m+1)番目の要素よりも大きい重みのパーティクルは残す
+        """
+        n=len(w)
+        ws=sorted(w)
+        m=floor(n*(1.0-self.approx_ratio))
+        if m<1:
+            m=0
+        j=0
+        delist=[]
+        
+        #delistにm個たまるまで継続
+        while j!=m:
+            i=0
+            for i in range(n):
+                if w[i]==ws[j] and n!=0:
+                    delist.append(i)
+                    j=j+1
+                if j==m:
+                    break
+        #重み、パーティクルから不要なパーティクルを削除
+        w=np.delete(w,delist,0)
+        x=np.delete(x,delist,0)
+        
+        w=w/sum(w)
+        
+        if mode=="par":
+            if n != len(w):
+                self.flag1=True
+                print("reapprox_par")
+            else:
+                self.flag1=False
+        elif mode=="exp":
+            if n != len(w):
+                self.flag2=True
+                print("reapprox_exp")
+            else:
+                self.flag2=False
+        return w,x
+            
+    
+    def Particlemaker(self,x,n,Param,Range): #パーティクルを生成する関数
+        #itertools.product与えられた変数軍([x1,x2,x3],[y1,y2])の総重複なし組み合わせを配列として出力
+        """
+        パーティクルを生成する関数
+        最小値:x-Range/2
+        最大値:x+Range/2
+        """
+        N=len(x)
+        temp=[]
+        
+        #ParamHが1のパーティクルのみ全幅RangeHで広げる
+        for i,p in enumerate(Param):
+            if(Param[p]==1):
+                temp.append(np.linspace(x[i]-Range[p]/2,x[i]+Range[p]/2,n[p]))
+            else:
+                temp.append([x[i]])
+        return(np.array(list(itertools.product(*temp))))
+
+    def p_array(self):
+        p_array=np.zeros([self.n_particles()])
+        
+    def Expsim_GRAPE(self):
+        """
+        パーティクルxに実験シミュレーションを行う関数
+        """
+        #量子状態の初期化
+        self.rho_init()
+        
+        #System Hamiltonian
+        self.H_0(self.x)
+
+        CPO = cpo.create_pulse_optimizer(2*pi*self.H_0,[2*pi*self.Hdrive1],self.Uinit,self.U_ideal,self.n_tslot,self.pulse_time,
+                                   dyn_type='UNIT',
+                                   dyn_params=None,
+                                   prop_type='DEF',
+                                   fid_type='DEF',
+                                   fid_params={'phase_option': 'PSU'},
+                                   pulse_scaling=1.0,
+                                   pulse_offset = 0.0,
+                                   log_level = 30,
+                                   gen_stats=False)
+        
+        CPO.dynamics.initialize_controls(self.pulse_shape)
+        fid_err = CPO.dynamics.fid_computer.get_fid_err()  
+        self.Uarb = CPO.dynamics.fwd_evo
+        self.Uarb_last = CPO.dynamics.full_evo
+        
+        self.rho=self.Uarb_last*self.rho_init()*self.Uarb_last.dag()
+        
+        #ms=0で測定
+        expect0=self.exp(self.rho) #ms=0で測定
+        if expect0 > 1.0:
+            print("Probability Error")
+            print(expect0)
+            expect0=1
+        return expect0
+    
+    def Update_GRAPE(self):
+        """
+        パーティクルの重みを更新する関数
+        """
+        self.p_exp=self.Expsim_GRAPE(self.x)
+        #結果を乱数にする場合
+        num=binomial(self.d, self.p_exp) #実験をd回行いｍs=0であった回数
+        
+        #尤度を計算
+        temp=binom.pmf(num,n=self.d,p=self.p_array)#各パーティクルでの実験でms=0にいた確率
+        temp=temp.reshape([len(temp),1])
+
+        #重みの更新
+        self.w=temp*self.w 
+        
+        #重みの全要素が0だった場合の例外処理
+        if np.sum(self.w)==0:
+            self.w=np.ones([n_particles(),1])/n_particles()
+        else:
+            self.w=self.w/np.sum(self.w) #重みの規格化      
