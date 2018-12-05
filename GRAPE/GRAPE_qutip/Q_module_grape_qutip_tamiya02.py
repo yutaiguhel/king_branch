@@ -74,8 +74,8 @@ class Grape_funcs(Q_H):
         self.wire1_amp=[]
         self.wire2_amp=[]
         self.data=[]
-        
-
+        self.d=1000
+        self.p_exp=0
     """
     Create and return a pulse generator object matching the given type.
     The pulse generators each produce a different type of pulse,
@@ -315,8 +315,20 @@ class Grape_funcs_for_single_wire(Grape_funcs):
         self.phi1_j = self.phi1*np.ones(self.n_tslot)
         self.phi2_j = zeros(self.n_tslot)   
 
-    def main(self):
+    def max_weight_x(self,x,w):
+        id=np.argmax(w)
+        return x[id]
+
+    def main(self,x,w):
+        x_max=self.max_weight_x(x,w)
         self.params()#パラメーター群を用意
+        """
+        self.a1=xout[0]
+        self.a2=xout[1]
+        """
+        self.D0=x_max[5]
+        self.AN=x_max[6]
+        self.Bz=x_max[8]
         self.Hamiltonian_calc()#ハミルトニアンを用意
         count=0
         while self.fid_err > self.fid_err_tol:
@@ -364,7 +376,7 @@ class Grape_funcs_for_single_wire(Grape_funcs):
         np.savetxt(cd+str(self.num_dir),self.data.T,newline="\n",delimiter=",")
         os.chdir("../")
         
-    def Expsim_GRAPE(self,x,):
+    def Expsim_GRAPE(self,x):
         """
         パーティクルxに実験シミュレーションを行う関数
         """
@@ -373,16 +385,24 @@ class Grape_funcs_for_single_wire(Grape_funcs):
         
         #System Hamiltonian
         self.H_0(x)
+
+        CPO = cpo.create_pulse_optimizer(2*pi*self.H_0,[2*pi*self.Hdrive1],self.Uinit,self.U_ideal,self.n_tslot,self.pulse_time,
+                                   dyn_type='UNIT',
+                                   dyn_params=None,
+                                   prop_type='DEF',
+                                   fid_type='DEF',
+                                   fid_params={'phase_option': 'PSU'},
+                                   pulse_scaling=1.0,
+                                   pulse_offset = 0.0,
+                                   log_level = 30,
+                                   gen_stats=False)
+        CPO.dynamics.initialize_controls(self.pulse_shape)
+        fid_err = CPO.dynamics.fid_computer.get_fid_err()  
+        self.Uarb = CPO.dynamics.fwd_evo
+        self.Uarb_last = CPO.dynamics.full_evo
         
-        #回転座標系に乗るためのハミルトニアン
-        self.H_rot(self.pulse_shape[i]) #C[4]:MW周波数
+        self.rho=self.Uarb_last*self.rho_init()*self.Uarb_last.dag()
         
-        #回転座標系に乗った時のドライブハミルトニアン
-        self.Vdrive_all(x,wire_amp[i],C[1],C[2]) #C[0]:V1, C[1]:V2, C[2]:ワイヤ間の位相差phi
-        
-        #ドライブハミルトニアンで時間発展
-        self.Tevo(C[3]) #C[3]:MWwidth
-            
         #ms=0で測定
         expect0=self.exp(self.rho) #ms=0で測定
         if expect0 > 1.0:
@@ -390,7 +410,29 @@ class Grape_funcs_for_single_wire(Grape_funcs):
             print(expect0)
             expect0=1
         return expect0
+    
+    def Update_GRAPE(self,x,w,n_particles):
+        """
+        パーティクルの重みを更新する関数
+        """
+        self.p_exp=self.Expsim_GRAPE(x)
+        #結果を乱数にする場合
+        num=binomial(self.d, self.p_exp) #実験をd回行いｍs=0であった回数
         
+        #尤度を計算
+        temp=binom.pmf(num,n=self.d,p=self.ptable_best)#各パーティクルでの実験でms=0にいた確率
+        temp=temp.reshape([len(temp),1])
+
+        #重みの更新
+        w=temp*w 
+        
+        #重みの全要素が0だった場合の例外処理
+        if np.sum(w)==0:
+            w=np.ones([n_particles(),1])/n_particles()
+        else:
+            w=sw/np.sum(w) #重みの規格化      
+            
+
 class Grape_funcs_for_cross_wire(Grape_funcs):   
      
     def make_init_pulse(self):
@@ -502,6 +544,41 @@ class Grape_funcs_for_cross_wire(Grape_funcs):
             print("iter = "+str(result.num_iter))
             print("fid_err = "+str(result.fid_err))
             self.fid_err_list = self.fid_err_list+[result.fid_err]
+            
+    def Expsim_GRAPE(self,x):
+        """
+        パーティクルxに実験シミュレーションを行う関数
+        """
+        #量子状態の初期化
+        self.rho_init()
+        
+        #System Hamiltonian
+        self.H_0(x)
+    
+        CPO = cpo.create_pulse_optimizer(2*pi*self.H_0,[2*pi*self.Hdrive1],self.Uinit,self.U_ideal,self.n_tslot,self.pulse_time,
+                                   dyn_type='UNIT',
+                                   dyn_params=None,
+                                   prop_type='DEF',
+                                   fid_type='DEF',
+                                   fid_params={'phase_option': 'PSU'},
+                                   pulse_scaling=1.0,
+                                   pulse_offset = 0.0,
+                                   log_level = 30,
+                                   gen_stats=False)
+        CPO.dynamics.initialize_controls(self.pulse_shape)
+        fid_err = CPO.dynamics.fid_computer.get_fid_err()  
+        self.Uarb = CPO.dynamics.fwd_evo
+        self.Uarb_last = CPO.dynamics.full_evo
+        
+        self.rho=self.Uarb_last*self.rho_init()*self.Uarb_last.dag()
+        
+        #ms=0で測定
+        expect0=self.exp(self.rho) #ms=0で測定
+        if expect0 > 1.0:
+            print("Probability Error")
+            print(expect0)
+            expect0=1
+        return expect0
             
     def inverse_func_rabi_frequency(self,pulse_shape,a,b):
         self.wire1_shape=pulse_shape[:,0]#pulse_shapeの0番目の列を抽出

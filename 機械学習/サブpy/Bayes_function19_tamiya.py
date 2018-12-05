@@ -378,33 +378,7 @@ class Bayes_Function(Q_H):
         #System Hamiltonian
         self.H_0(x)
         
-        #ラビ振動の時間発展
-        if self.exp_flag=="rabi":
-            #回転座標系に乗るためのハミルトニアン
-            self.H_rot(C[4]) #C[4]:MW周波数
-            
-            #回転座標系に乗った時のドライブハミルトニアン
-            self.Vdrive_all(x,C[0],C[1],C[2]) #C[0]:V1, C[1]:V2, C[2]:ワイヤ間の位相差phi
-            
-            #ドライブハミルトニアンで時間発展
-            self.Tevo(C[3]) #C[3]:MWwidth
-            
-        #ラムゼー干渉の時間発展
-        elif self.exp_flag=="ramsey":
-            #回転座標系に乗るためのハミルトニアン
-            self.H_rot(C[4]) #C[4]:MW周波数
-            
-            #回転座標系に乗った時のドライブハミルトニアン
-            self.Vdrive_all(x,C[0],C[1],C[2]) #C[0]:V1, C[1]:V2, C[2]:ワイヤ間の位相差phi
-            
-            #ドライブハミルトニアンで時間発展
-            self.Tevo(C[3]) #C[3]:MWwidth
-            
-            #自由時間発展
-            self.Tevo_free(C[5]) #C[5]:wait
-            
-            #ドライブハミルトニアンで時間発展
-            self.Tevo(C[3]) #C[3]:MWwidth
+
             
         #ms=0で測定
         expect0=self.exp(self.rho) #ms=0で測定

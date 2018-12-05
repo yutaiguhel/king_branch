@@ -278,7 +278,4 @@ if __name__=="__main__":
 gf=Grape_funcs_for_single_wire()
 gf.D0,gf.AN,gf.QN,gf.Bz=xout[5:]
 gf.main()
-"""
-gf.csv_output(gf.pulse_shape,xout[0],xout[1])
-"""
-
+gf.
