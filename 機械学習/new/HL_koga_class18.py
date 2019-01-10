@@ -32,18 +32,20 @@ m.d=1000 #推定に使う実験データの数
 m.a=0.98 #リサンプリング強度
 m.approx_ratio=0.98 #パーティクルを残す割合 0.98
 m.resampling_threshold=0.5 #リサンプリング閾値
-m.bayes_threshold=10
-m.wire=1
+m.bayes_threshold=0.01
+m.wire=0
 m.exp_select="rabi" #rabi, ramsey, all
 #============================実験パラメータの変更==================================
 m.V1=1.5 #ワイヤ1の電圧
+m.V2=1.5
+m.phi=np.pi/2
 m.t=0.5 #MWwidth
 m.tw=1.0 #wait time
-m.g=     {"V1":10,"V2":30,"phi":10,  "MWwidth":10, "MWfreq":10,"tw":5} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
+m.g=     {"V1":10,"V2":10,"phi":10,  "MWwidth":10, "MWfreq":10,"tw":5} #量子操作において変更するパラメータの分割数 V1,V2,phi,t,MW_freq
 
-m.ParamC={"V1":1, "V2":0, "phi":0,  "MWwidth":1,  "MWfreq":0,"tw":0} #V1,V2,phi,MWwidth,MWfreq 変更する場合は1
+m.ParamC={"V1":1, "V2":1, "phi":1,  "MWwidth":1,  "MWfreq":0,"tw":0} #V1,V2,phi,MWwidth,MWfreq 変更する場合は1
 
-m.RangeC={"V1":2.9, "V2":1, "phi":2*np.pi,"MWwidth":0.99,"MWfreq":4,"tw":1.9} #実験設計パラメータの拡張範囲
+m.RangeC={"V1":2.9, "V2":1, "phi":np.pi,"MWwidth":0.99,"MWfreq":4,"tw":1.9} #実験設計パラメータの拡張範囲
 
 m.Limit={"V1max":2.25,"V1min":0.001,"V2max":2.25,"V2min":0.001,"phimax":2*np.pi,"phimin":0,\
          
@@ -51,22 +53,23 @@ m.Limit={"V1max":2.25,"V1min":0.001,"V2max":2.25,"V2min":0.001,"phimax":2*np.pi,
          
          "MWfreqmax":2875,"MWfreqmin":2865,"twmax":5,"twmin":0.001} #実験パラメータの上限と下限s
 #============================推定パラメータの変更==================================
-m.a1=20
+m.a1=5
 m.b1=1.0
-m.a2=15
+m.a2=8
 m.b2=0.95
+m.w_theta=np.pi/4
 m.Bo=-1.26 #外部磁場[MHz] 地磁気を打ち消すならば-1.26MHz
 m.Ac_list=[]#[-3.265]
 #炭素数に応じてParamH,RangeHの数だけParamH,RangeHを増やす
-m.n=     {"a1":10,  "b1":3, "a2":10,  "b2":10,  "w_theta":10, \
+m.n=     {"a1":10,  "b1":3, "a2":10,  "b2":10,  "w_theta":50, \
           
           "D0":10,"AN":5,"QN":0,"Bz":10} #推定基底毎のパーティクルの数 a1,b1,a2,b2,w_theta,D0,An,Qn,Bz *Ac
 
-m.ParamH={"a1":1,  "b1":1,  "a2":0,  "b2":0,  "w_theta":0,      \
+m.ParamH={"a1":0,  "b1":0,  "a2":0,  "b2":0,  "w_theta":1,      \
           
           "D0":0,"AN":0,"QN":0,"Bz":0} #a1,b1,a2,b2,w_theta,D0,AN,QN,外部磁場,*炭素 変更する場合は1
 
-m.RangeH={"a1":30, "b1":0.3,  "a2":20,"b2":0.8,"w_theta":2*np.pi,\
+m.RangeH={"a1":30, "b1":0.3,  "a2":20,"b2":0.8,"w_theta":np.pi/2,\
           
           "D0":3,"AN":0.05,"QN":0,"Bz":8} #推定パラメータの広げる範囲
 
@@ -87,6 +90,7 @@ a1_max_list=[]
 a1_min_list=[]
 b1_max_list=[]
 b1_min_list=[]
+w_theta_list=[]
 #===========================パーティクルと量子操作群の生成===========================
 m.x=m.Particlemaker(m.x,m.n,m.ParamH,m.RangeH)#パーティクルの作成
 m.x_approx=m.x
@@ -169,7 +173,7 @@ if __name__=="__main__":
         
         
         plt.figure(figsize=(10,7))
-        
+        """
         #パラメータa1の推定値を描画
         m.Region_edge(0.95,"a1")
         a_list.append(xout[0])
@@ -197,7 +201,21 @@ if __name__=="__main__":
         
         plt.tight_layout()
         plt.show()
+        """
         
+        #ワイヤ間の角度の推定値を描画
+        w_theta_list.append(xout[4]*180/np.pi)
+        m.Region_edge(0.95,"w_theta")
+        plt.fill_between(m.i_list,m.Region_edge_output("w_theta",1),m.Region_edge_output("w_theta",0),color='lightgreen',alpha=0.3)
+        plt.hlines(m.x0_dict["w_theta"]*180/np.pi,0,m.i_list[i],"r",label="True w_theta")
+        plt.xlabel("iteration number",fontsize=20)
+        plt.ylabel("wire angle (degree)",fontsize=20)
+        plt.plot(m.i_list,w_theta_list,label="Infered w_theta")
+        plt.legend(loc="upper right")
+        plt.title("Estimated Wire Angle",fontsize=24)
+        plt.show()
+        
+        """
         #重みの二次元表示
         w_=m.w.reshape(m.w.shape[0],)
         plt.xlim(m.x_dict["a1"] - m.RangeH["a1"]/2-1,m.x_dict["a1"] + m.RangeH["a1"]/2+1)
@@ -207,18 +225,12 @@ if __name__=="__main__":
         plt.title("Weight Map",fontsize=24)
         cm = m.generate_cmap(['mediumblue', 'limegreen', 'orangered'])
         plt.scatter(m.x.T[0], m.x.T[1], s=15, c=w_, cmap=cm)
-        
-        """
-        fig = plt.figure(figsize=(13,7))
-        im = plt.scatter(iris.data[:,0], iris.data[:,1], c=iris.target, linewidths=0, alpha=.8, cmap=cm)
-        fig.colorbar(im)
-        plt.show()
-        """
          
         # カラーバーを表示
         ax=plt.colorbar()
         ax.set_label("Probability",fontsize=20)
         plt.show()
+        """
         
         #1推定にかかった時間
         tim1=time.time()

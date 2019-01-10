@@ -105,7 +105,7 @@ class Bayes_Function(Q_H):
         self.params_list=["a1","b1","a2","b2","w_theta","D0","AN","QN","Bz"]
         
         #真のハミルトニアン(辞書型)
-        self.x0_dict={"a1":self.a1,"b1":self.b1,"a2":self.a2,"b2":self.b2,"w_theta":self.w_theta
+        self.x0_dict={"a1":self.a1,"b1":self.b1,"a2":self.a2,"b2":self.b2,"w_theta":self.w_theta-np.pi/10
                  ,"D0":self.D0,"AN":self.AN,"QN":self.QN,"Bz":self.Be+self.Bo-1} #真のハミルトニアン
         
         #真のハミルトニアン
@@ -113,7 +113,7 @@ class Bayes_Function(Q_H):
                 ,self.x0_dict["D0"],self.x0_dict["AN"],self.x0_dict["QN"],self.x0_dict["Bz"]]
         
         #パーティクルの中心値(辞書型)
-        self.x_dict={"a1":self.a1-self.a1/5,"b1":self.b1+self.b1/10,"a2":self.a2-self.a2/10,"b2":self.b2+self.b2/5,"w_theta":self.w_theta
+        self.x_dict={"a1":self.a1,"b1":self.b1,"a2":self.a2,"b2":self.b2,"w_theta":self.w_theta
                 ,"D0":self.D0,"AN":self.AN,"QN":self.QN,"Bz":self.Be+self.Bo} #現在のパーティクル
         
         #パーティクルの中心値
@@ -154,6 +154,7 @@ class Bayes_Function(Q_H):
         実験設計の数を返す
         """
         n_C=1
+        
         #全実験設計の数を返す
         if self.i==0:
             for c in self.g:
@@ -167,6 +168,7 @@ class Bayes_Function(Q_H):
                     return int(n_C/self.g["tw"])
                 else:
                     return n_C
+                
         #選択した実験設計の数を返す
         else:
             if self.exp_select=="all":
@@ -190,6 +192,7 @@ class Bayes_Function(Q_H):
         
         #パーティクル数方向に和を取る
         mu=np.sum(mu,axis=0)
+        
         return mu
         
     def init_C(self):
@@ -278,6 +281,52 @@ class Bayes_Function(Q_H):
             w[i][0]=1.0/n
         print ("resample")
         return w,x
+    
+    def Convolved_distribution(self,x):
+        p=0
+        for i in range(self.n_particles()):
+            p=p+self.w[i][0]/np.sqrt()
+    
+    def resample_particle(self):
+        
+        #パーティクルの平均値
+        mu=self.Mean(self.w,self.x)
+        
+        #乱数生成範囲を格納する辞書
+        x_range={"a1_min":0,"a1_max":0,"b1_min":0,"b1_max":0,"a2_min":0,"a2_max":0,\
+                      "b2_min":0,"b2_max":0,"w_theta_min":0,"w_theta_max":0,\
+                      "D0_min":0,"D0_max":0,"AN_min":0,"AN_max":0,"QN_min":0,"QN_max":0,\
+                      "Bz_min":0,"Bz_max":0} 
+        
+        #生成した乱数を格納する辞書
+        x_rand={"a1":0,"b1":0,"a2":0,"b2":0,"w_theta":0,"D0":0,"AN":0,"QN":0,"Bz":0}
+        
+        temp=[]
+        
+        #各パラメータについて乱数を生成
+        for i,p in self.ParamH:
+            
+            #乱数生成範囲を指定
+            if self.ParamH[p]==1:
+                x_range[p+"_min"]=np.min(self.x.T[i])
+                x_range[p+"_max"]=np.max(self.x.T[i])
+                
+                #パラメータpで乱数生成
+                x_rand[p]=x_range[p+"_min"]+(x_range[p+"_max"]-x_range[p+"_min"])*np.random.random(self.n[p])
+                
+                #現在生成できるパーティクルを生成
+                temp.append(np.linspace(x_range[p+"_min"],x_range[p+"_max"],self.n[p]))
+            else:
+                temp.append([mu[i]])
+        
+        #パーティクルの候補点を生成
+        temp=np.array(list(itertools.product(*temp)))
+        
+        
+        
+        
+        
+        
     
     def reapprox(self,w,x,mode): #不要となったパーティクルを削除する関数
         """
